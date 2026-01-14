@@ -1,81 +1,3 @@
-# TeslaMate Mail
-
-**Système de notification et de gestion des charges pour TeslaMate**
-
----
-
-## 📋 Table des matières
-
-- [Présentation](#-présentation)
-- [Fonctionnalités](#-fonctionnalités)
-- [Prérequis](#-prérequis)
-- [Installation](#-installation)
-  - [Étape 1 : Installation de TeslaMate](#étape-1--installation-de-teslamate)
-  - [Étape 2 : Installation de TeslaMate Mail](#étape-2--installation-de-teslamate-mail)
-  - [Étape 3 : Configuration via l'interface web](#étape-3--configuration-via-linterface-web)
-- [Configuration](#-configuration)
-- [Utilisation](#-utilisation)
-- [Dépannage](#-dépannage)
-- [Support](#-support)
-- [Licence](#-licence)
-
----
-
-## 🎯 Présentation
-
-**TeslaMate Mail** est une extension pour TeslaMate qui permet de :
-- Recevoir des notifications par email après chaque charge
-- Consulter l'historique des charges via une interface web moderne
-- Générer des rapports de consommation détaillés (PDF, CSV)
-- Surveiller en temps réel via MQTT (optionnel)
-
----
-
-## ✨ Fonctionnalités
-
-### 📧 Notifications Email
-- Email automatique après chaque charge
-- Détails : date, lieu, énergie ajoutée, coût estimé
-- Configuration SMTP flexible (port 465/587)
-
-### 📊 Interface Web
-- Dashboard moderne et responsive
-- Historique des 10 dernières charges
-- Carte interactive avec localisation des charges
-- Visualisation des trajets sur une carte
-- Rapports de consommation personnalisables
-
-### 📈 Rapports
-- Filtrage par période et par lieu (geofence)
-- Export PDF pour impression
-- Export CSV pour analyse
-- Envoi par email
-
-### 🔔 MQTT (Optionnel)
-- Monitoring temps réel des charges
-- Support Mosquitto intégré
-- Compatible avec Home Assistant
-
----
-
-## 🔧 Prérequis
-
-### Système
-- **OS** : Ubuntu 20.04+ / Debian 11+
-- **Architecture** : x86_64, ARM64
-- **RAM** : 2 Go minimum (4 Go recommandé)
-- **Stockage** : 10 Go disponibles
-
-### Services requis
-- Docker & Docker Compose (pour TeslaMate)
-- Serveur SMTP configuré (Gmail, OVH, etc.)
-- Accès root au serveur
-
-### Optionnel
-- Broker MQTT (installable automatiquement)
-- Nom de domaine avec SSL/TLS
-
----
 
 ## 🚀 Installation
 
@@ -132,23 +54,18 @@ sudo docker-compose ps
 
 1. Accédez à `http://IP_SERVEUR:4000`
 2. Suivez l'assistant de configuration
-3. Connectez votre compte Tesla
+3. Connectez votre compte Tesla après avoir généré les jetons (Token) en suivant ce tutoriel : https://www.myteslamate.com/fr/jeton-tesla/
 4. Attendez que les premières données soient collectées
 
 ---
 
 ### Étape 2 : Installation de TeslaMate Mail
 
-#### Téléchargement
-
-```bash
-# Télécharger l'archive
-wget https://github.com/VOTRE_REPO/teslamate-mail/releases/latest/download/teslamate-mail.zip
-
-# Décompresser
-unzip teslamate-mail.zip
-cd teslamate-mail
-```
+télécharger les fichiers depuis https://github.com/infrarik/teslamatemail
+Vous avez besoin de :
+. files.zip
+.install.sh
+.uninstall.sh si vous souhaitez désinstaller Teslamate-Mail uniquement (cela ne désinstallera pas Teslamate, ne le modifiera pas non plus)
 
 #### Lancement de l'installation
 
@@ -157,12 +74,7 @@ cd teslamate-mail
 chmod +x install.sh
 
 # Lancer l'installation en tant que root
-sudo bash install.sh
-```
-
-#### Assistant d'installation
-
-L'installation se déroule en **11 étapes** :
+bash install.sh
 
 ##### 📧 Configuration Email
 
@@ -178,7 +90,6 @@ Email destinataire : mon-email@gmail.com
 
 ##### 🔔 Configuration MQTT (Optionnel)
 
-```
 Installer Mosquitto ? (o/N) : o
 Port d'écoute : 1883
 Créer un utilisateur ? (O/n) : o
@@ -218,8 +129,6 @@ http://IP_SERVEUR/teslaconf.php
 
 #### Configuration TeslaMate Mail
 
-![Configuration](https://via.placeholder.com/600x400?text=Interface+de+configuration)
-
 **1. Configuration MQTT** (si non installé automatiquement)
 - Hôte : `localhost` ou IP du broker
 - Port : `1883`
@@ -234,9 +143,19 @@ http://IP_SERVEUR/teslaconf.php
 - Chemin : `/opt/teslamate/docker-compose.yml`
 - Le script détecte automatiquement ce chemin
 
+
+**4. Configuration Telegram**
+- Vous aurez besoin d'un token pour créer un Bot télégram, Bot qui sera utilisé par Teslamate-Mail.
+- Il faudra indiquer les informations sur l'utilisateur à qui envoyer les informations : le nom (@xxxx), le ChatID (12345678).
+Tutoriel conseillé : https://az-tools.com/actu/creer-un-bot-telegram-etapes-simples-pour-recuperer-le-token-et-lid-de-chat/#:~:text=R%C3%A9cup%C3%A9rer%20ton%20ID%20de%20chat%20Telegram,-Pour%20interagir%20avec&text=Envoyez%20un%20message%20%C3%A0%20votre,(par%20exemple%20%3A%20Hello%20).&text=%E2%9E%A1%20Ce%20nombre%20(%20123456789%20)%20est%20votre%20ID%20de%20chat%20Telegram.
+
+
 **4. Activer les notifications**
 - ✅ Cocher "Activer les notifications MQTT"
 - ✅ Cocher "Activer les notifications Email"
+- ✅ Cocher "Activer les notifications Telegram"
+
+!!! IMPORTANT : à chaque changement de configuration, il faut réactiver les notifications !!!
 
 #### Sauvegarde
 
@@ -252,7 +171,6 @@ Par défaut, le script vérifie les nouvelles charges toutes les **5 minutes**.
 
 Pour modifier :
 
-```bash
 # Éditer le crontab
 sudo crontab -e
 
@@ -342,7 +260,6 @@ Les emails sont envoyés automatiquement après chaque charge et contiennent :
 
 ### Problème : Aucun email reçu
 
-```bash
 # Vérifier le statut de Postfix
 sudo systemctl status postfix
 
@@ -361,7 +278,6 @@ echo "Test" | mail -s "Test TeslaMate" votre-email@exemple.com
 
 ### Problème : Erreur de connexion à la base de données
 
-```bash
 # Vérifier que PostgreSQL est exposé
 sudo docker-compose -f /opt/teslamate/docker-compose.yml ps
 
@@ -373,7 +289,7 @@ psql -h localhost -U teslamate -d teslamate
 ```
 
 **Solution** :
-```bash
+
 # Éditer docker-compose.yml
 sudo nano /opt/teslamate/docker-compose.yml
 
@@ -387,7 +303,7 @@ sudo docker-compose -f /opt/teslamate/docker-compose.yml restart
 
 ### Problème : Interface web inaccessible
 
-```bash
+
 # Vérifier Apache
 sudo systemctl status apache2
 
@@ -400,7 +316,6 @@ sudo systemctl restart apache2
 
 ### Problème : MQTT ne fonctionne pas
 
-```bash
 # Vérifier Mosquitto
 sudo systemctl status mosquitto
 
@@ -414,7 +329,7 @@ sudo journalctl -u mosquitto -n 50
 
 ### Problème : Script cron ne s'exécute pas
 
-```bash
+
 # Vérifier le cron
 sudo crontab -l
 
@@ -423,27 +338,6 @@ sudo tail -f /var/log/teslacharge.log
 
 # Exécution manuelle pour tester
 sudo /root/teslacharge.sh
-```
-
----
-
-## 📄 Licence
-
-Ce projet est sous licence **GNU General Public License v3.0**
-
-```
-TeslaMate Mail - Système de notification pour TeslaMate
-Copyright © 2026 monwifi.fr / Eric BERTREM
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
 ```
 
 ---
