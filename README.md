@@ -9,6 +9,8 @@ selon les termes de la Licence Publique Générale GNU (GNU GPL) telle que publi
 par la Free Software Foundation, soit la version 3 de ladite licence, ou 
 (à votre discrétion) toute version ultérieure.
 
+**Note importante :** TeslaMate Mail n'a aucun lien officiel avec le projet TeslaMate. C'est uniquement un ajout qui utilise une instance TeslaMate déjà installée.
+
 ---
 
 ## Fonctions principales (FR)
@@ -59,6 +61,8 @@ This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License (GNU GPL) as published 
 by the Free Software Foundation, either version 3 of the License, or 
 (at your option) any later version.
+
+**Important Note:** TeslaMate Mail has no official link with the TeslaMate project. It is solely an add-on that uses an already installed TeslaMate instance.
 
 ---
 
