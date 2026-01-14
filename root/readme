@@ -1,1 +1,5 @@
+ici se trouvent les fichiers à copier dans /root (LXC Proxmox) ou dans un /home/xxxx quelconque sur un serveur
+Ubuntu/Debian/Raspbian par exemple.
+Attention, le fichier d'install est prévu pour /root, idem le crontab pour lancer le script
+toutes les 5 mn (par défaut) : il faudra modifier les chemins.
 
