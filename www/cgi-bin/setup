@@ -1,0 +1,11 @@
+mqtt_host=127.0.0.1
+mqtt_port=1883
+mqtt_user=mqtt_user
+mqtt_pass=pass
+mqtt_topic=teslamate/tmy
+notification_email=notif@monmail.com
+docker_path=/opt/teslamate/docker-compose.yml
+telegram_bot_token=xxxx
+email_enabled=False
+telegram_enabled=False
+mqtt_enabled=False
