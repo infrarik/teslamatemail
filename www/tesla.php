@@ -148,7 +148,7 @@ try {
                 <div class="absolute inset-0 bg-gradient-to-r from-green-600 to-green-400" style="width: ${carData.battery_level}%"></div>
               </div>
               
-              <div class="grid grid-cols-3 gap-4">
+              <div class="grid grid-cols-3 gap-4 mb-4">
                 <div class="bg-gray-800/50 rounded-xl p-4 text-center">
                   <p class="text-gray-400 text-xs mb-1 font-bold">Odomètre</p>
                   <p class="text-xl font-bold text-white">${carData.odometer.toLocaleString('fr-FR')} km</p>
@@ -160,6 +160,25 @@ try {
                 <div class="bg-gray-800/50 rounded-xl p-4 text-center">
                   <p class="text-gray-400 text-xs mb-1 font-bold">Autonomie</p>
                   <p class="text-xl font-bold text-white">${Math.round(carData.est_battery_range_km)} km</p>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-4 gap-3">
+                <div class="bg-gray-800/50 rounded-xl p-3 text-center">
+                  <p class="text-gray-400 text-xs mb-1 font-bold">Pneu AVG</p>
+                  <p class="text-lg font-bold text-white">${carData.tpms_pressure_fl || 0} bar</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-xl p-3 text-center">
+                  <p class="text-gray-400 text-xs mb-1 font-bold">Pneu AVD</p>
+                  <p class="text-lg font-bold text-white">${carData.tpms_pressure_fr || 0} bar</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-xl p-3 text-center">
+                  <p class="text-gray-400 text-xs mb-1 font-bold">Pneu ARG</p>
+                  <p class="text-lg font-bold text-white">${carData.tpms_pressure_rl || 0} bar</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-xl p-3 text-center">
+                  <p class="text-gray-400 text-xs mb-1 font-bold">Pneu ARD</p>
+                  <p class="text-lg font-bold text-white">${carData.tpms_pressure_rr || 0} bar</p>
                 </div>
               </div>
             </div>
