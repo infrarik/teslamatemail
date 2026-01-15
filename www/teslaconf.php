@@ -86,7 +86,7 @@ if (isset($_POST['add_telegram_user'])) {
 <body class="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white min-h-screen">
   <div class="max-w-2xl mx-auto p-4 pb-12">
     <div class="flex items-center gap-4 mb-8 pt-4">
-      <a href="tesla.html" class="p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors">
+      <a href="tesla.php" class="p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
         </svg>

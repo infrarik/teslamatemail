@@ -125,7 +125,7 @@ try {
 <div id="sidebar">
     <div class="header">
         <div class="top-nav">
-            <a href="tesla.html" class="back-button">
+            <a href="tesla.php" class="back-button">
                 <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </a>
             <h1 style="margin:0; font-size:18px; color:#dc2626;">TeslaMap Historique</h1>

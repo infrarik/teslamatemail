@@ -148,7 +148,7 @@ try {
                 <div class="absolute inset-0 bg-gradient-to-r from-green-600 to-green-400" style="width: ${carData.battery_level}%"></div>
               </div>
               
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-3 gap-4">
                 <div class="bg-gray-800/50 rounded-xl p-4 text-center">
                   <p class="text-gray-400 text-xs mb-1 font-bold">Odomètre</p>
                   <p class="text-xl font-bold text-white">${carData.odometer.toLocaleString('fr-FR')} km</p>
@@ -156,6 +156,10 @@ try {
                 <div class="bg-gray-800/50 rounded-xl p-4 text-center">
                   <p class="text-gray-400 text-xs mb-1 font-bold">Vitesse</p>
                   <p class="text-xl font-bold text-white">${carData.speed || 0} km/h</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                  <p class="text-gray-400 text-xs mb-1 font-bold">Autonomie</p>
+                  <p class="text-xl font-bold text-white">${Math.round(carData.est_battery_range_km)} km</p>
                 </div>
               </div>
             </div>

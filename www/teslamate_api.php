@@ -1,6 +1,5 @@
 <?php
 header('Content-Type: application/json');
-// On force l'affichage des erreurs PHP pour le debug si le JSON casse
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -24,21 +23,42 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
     if (preg_match('/POSTGRES_DB[:=]\s*(\S+)/', $docker_content, $m)) $db_name = str_replace(['"', "'"], '', trim($m[1]));
 }
 
-// --- 3. CONNEXION ET REQUÊTE ---
+// --- 3. CONNEXION ET REQUÊTE COMPLÈTE ---
 try {
     $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Requête simplifiée au maximum pour tester
+    // Requête avec TOUS les champs disponibles
     $sql = "SELECT 
-                c.name, 
-                s.state, 
-                p.battery_level, 
-                p.ideal_battery_range_km, 
-                p.outside_temp, 
-                p.inside_temp, 
-                p.speed, 
-                p.odometer 
+                c.name,
+                s.state,
+                p.date,
+                p.latitude,
+                p.longitude,
+                p.speed,
+                p.power,
+                p.odometer,
+                p.ideal_battery_range_km,
+                p.battery_level,
+                p.outside_temp,
+                p.elevation,
+                p.fan_status,
+                p.driver_temp_setting,
+                p.passenger_temp_setting,
+                p.is_climate_on,
+                p.is_rear_defroster_on,
+                p.is_front_defroster_on,
+                p.inside_temp,
+                p.battery_heater,
+                p.battery_heater_on,
+                p.battery_heater_no_power,
+                p.est_battery_range_km,
+                p.rated_battery_range_km,
+                p.usable_battery_level,
+                p.tpms_pressure_fl,
+                p.tpms_pressure_fr,
+                p.tpms_pressure_rl,
+                p.tpms_pressure_rr
             FROM public.cars c
             JOIN public.positions p ON p.car_id = c.id
             JOIN public.states s ON s.car_id = c.id
@@ -50,16 +70,46 @@ try {
     if (!$row) {
         echo json_encode(['error' => 'Aucune ligne retournée par la DB']);
     } else {
-        // On prépare la réponse pour tesla.html
+        // Réponse complète avec tous les champs
         $response = [
-            'display_name'           => $row['name'] ?? 'Tesla',
-            'state'                  => $row['state'] ?? 'unknown',
-            'battery_level'          => $row['battery_level'] ?? 0,
+            // Informations de base
+            'display_name' => $row['name'] ?? 'Tesla',
+            'state' => $row['state'] ?? 'unknown',
+            'date' => $row['date'] ?? null,
+            
+            // Position et déplacement
+            'latitude' => $row['latitude'] ?? 0,
+            'longitude' => $row['longitude'] ?? 0,
+            'speed' => $row['speed'] ?? 0,
+            'power' => $row['power'] ?? 0,
+            'odometer' => round($row['odometer'] ?? 0),
+            'elevation' => $row['elevation'] ?? 0,
+            
+            // Batterie
+            'battery_level' => $row['battery_level'] ?? 0,
+            'usable_battery_level' => $row['usable_battery_level'] ?? 0,
             'ideal_battery_range_km' => $row['ideal_battery_range_km'] ?? 0,
-            'outside_temp'           => $row['outside_temp'] ?? 0,
-            'inside_temp'            => $row['inside_temp'] ?? 0,
-            'speed'                  => $row['speed'] ?? 0,
-            'odometer'               => round($row['odometer'] ?? 0)
+            'est_battery_range_km' => $row['est_battery_range_km'] ?? 0,
+            'rated_battery_range_km' => $row['rated_battery_range_km'] ?? 0,
+            'battery_heater' => $row['battery_heater'] ?? false,
+            'battery_heater_on' => $row['battery_heater_on'] ?? false,
+            'battery_heater_no_power' => $row['battery_heater_no_power'] ?? false,
+            
+            // Température et climatisation
+            'outside_temp' => $row['outside_temp'] ?? 0,
+            'inside_temp' => $row['inside_temp'] ?? 0,
+            'driver_temp_setting' => $row['driver_temp_setting'] ?? 0,
+            'passenger_temp_setting' => $row['passenger_temp_setting'] ?? 0,
+            'is_climate_on' => $row['is_climate_on'] ?? false,
+            'is_rear_defroster_on' => $row['is_rear_defroster_on'] ?? false,
+            'is_front_defroster_on' => $row['is_front_defroster_on'] ?? false,
+            'fan_status' => $row['fan_status'] ?? 0,
+            
+            // Pression des pneus (TPMS)
+            'tpms_pressure_fl' => $row['tpms_pressure_fl'] ?? 0,
+            'tpms_pressure_fr' => $row['tpms_pressure_fr'] ?? 0,
+            'tpms_pressure_rl' => $row['tpms_pressure_rl'] ?? 0,
+            'tpms_pressure_rr' => $row['tpms_pressure_rr'] ?? 0
         ];
         echo json_encode($response);
     }

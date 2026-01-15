@@ -128,7 +128,7 @@ if (file_exists($file)) {
         </div>
 
         <div class="footer">
-            <a href="tesla.html" class="link primary">Dashboard</a>
+            <a href="tesla.php" class="link primary">Dashboard</a>
             <a href="teslaconf.php" class="link">Configuration</a>
         </div>
     </div>
