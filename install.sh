@@ -3,7 +3,7 @@
 ################################################################################
 # Script d'installation COMPLET TeslaMate Mail
 # Version 3.0 - Installation automatisée complète
-# 
+#
 # Ce script fait TOUT :
 # - Installation des dépendances
 # - Configuration Postfix (SMTP)
@@ -36,7 +36,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 # Vérifier si root
-if [ "$EUID" -ne 0 ]; then 
+if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}✗ Ce script doit être exécuté en tant que root${NC}"
     echo "Utilisez: sudo bash install.sh"
     exit 1
@@ -343,16 +343,16 @@ if [ -d "$WWW_SOURCE" ]; then
     echo -e "${YELLOW}→ Copie des fichiers HTML/PHP...${NC}"
     # Copier tous les fichiers HTML et PHP
     find "$WWW_SOURCE" -maxdepth 1 -type f \( -name "*.html" -o -name "*.php" -o -name "*.png" -o -name "*.jpg" -o -name "*.gif" \) -exec cp {} "$WWW_DEST/" \;
-    
+
     echo -e "${YELLOW}→ Configuration du répertoire cgi-bin...${NC}"
     # Créer le répertoire cgi-bin
     mkdir -p "$WWW_DEST/cgi-bin"
-    
+
     # Copier le contenu de cgi-bin
     if [ -d "$WWW_SOURCE/cgi-bin" ]; then
         cp -r "$WWW_SOURCE/cgi-bin"/* "$WWW_DEST/cgi-bin/" 2>/dev/null || true
         echo -e "${CYAN}  ✓ Fichiers cgi-bin copiés${NC}"
-        
+
         # Lister ce qui a été copié
         if [ -f "$WWW_DEST/cgi-bin/setup" ]; then
             echo -e "${CYAN}    • setup${NC}"
@@ -363,7 +363,7 @@ if [ -d "$WWW_SOURCE" ]; then
     else
         echo -e "${YELLOW}  ⚠ Pas de répertoire cgi-bin dans l'archive, création manuelle${NC}"
     fi
-    
+
     echo -e "${YELLOW}→ Mise à jour du fichier setup...${NC}"
     # Mettre à jour le fichier setup avec la config email
     cat > "$WWW_DEST/cgi-bin/setup" <<EOF
@@ -378,20 +378,20 @@ docker_path=/opt/teslamate/docker-compose.yml
 mqtt_enabled=False
 email_enabled=False
 EOF
-    
+
     # Créer lastchargeid s'il n'existe pas
     if [ ! -f "$WWW_DEST/cgi-bin/lastchargeid" ]; then
         echo "0" > "$WWW_DEST/cgi-bin/lastchargeid"
         echo -e "${CYAN}  ✓ lastchargeid créé${NC}"
     fi
-    
+
     echo -e "${YELLOW}→ Configuration des permissions...${NC}"
     # Permissions
     chown -R www-data:www-data "$WWW_DEST/cgi-bin"
     chmod 755 "$WWW_DEST/cgi-bin"
     chmod 666 "$WWW_DEST/cgi-bin/setup" "$WWW_DEST/cgi-bin/lastchargeid"
     chmod 644 "$WWW_DEST"/*.html "$WWW_DEST"/*.php 2>/dev/null || true
-    
+
     echo -e "${GREEN}✓ Fichiers web déployés${NC}"
     echo -e "${GREEN}✓ Répertoire cgi-bin configuré avec permissions${NC}"
 else
@@ -410,10 +410,10 @@ ROOT_DEST="/root"
 if [ -d "$ROOT_SOURCE" ]; then
     # Copier tous les fichiers .sh
     find "$ROOT_SOURCE" -maxdepth 1 -type f -name "*.sh" -exec cp {} "$ROOT_DEST/" \;
-    
+
     # Rendre les scripts exécutables
     chmod +x "$ROOT_DEST"/*.sh 2>/dev/null || true
-    
+
     echo -e "${GREEN}✓ Scripts déployés dans /root${NC}"
 else
     echo -e "${YELLOW}⚠ Aucun répertoire 'root' trouvé dans l'archive${NC}"
@@ -445,10 +445,10 @@ fi
 
 if [ -n "$DOCKER_COMPOSE_PATH" ]; then
     echo -e "${CYAN}→ Docker-compose trouvé : $DOCKER_COMPOSE_PATH${NC}"
-    
+
     # Backup
     cp "$DOCKER_COMPOSE_PATH" "${DOCKER_COMPOSE_PATH}.backup.$(date +%Y%m%d-%H%M%S)"
-    
+
     # Vérifier si PostgreSQL est exposé
     if ! grep -q "5432:5432" "$DOCKER_COMPOSE_PATH"; then
         echo -e "${YELLOW}→ PostgreSQL n'est pas exposé, modification nécessaire${NC}"
@@ -459,15 +459,15 @@ if [ -n "$DOCKER_COMPOSE_PATH" ]; then
         echo ""
         read -p "Voulez-vous que je tente d'ajouter automatiquement ? (o/N) : " -n 1 -r
         echo ""
-        
+
         if [[ $REPLY =~ ^[Oo]$ ]]; then
             # Arrêter Docker Compose
             DOCKER_DIR=$(dirname "$DOCKER_COMPOSE_PATH")
             cd "$DOCKER_DIR"
-            
+
             echo -e "${YELLOW}→ Arrêt des conteneurs Docker...${NC}"
             docker-compose down 2>/dev/null || docker compose down 2>/dev/null || true
-            
+
             # Ajouter le port mapping de manière plus robuste
             # Chercher la ligne "database:" et ajouter ports après
             if grep -q "database:" "$DOCKER_COMPOSE_PATH"; then
@@ -475,22 +475,22 @@ if [ -n "$DOCKER_COMPOSE_PATH" ]; then
                 TEMP_FILE=$(mktemp)
                 awk '/database:/ {print; print "    ports:"; print "      - \"5432:5432\""; next} 1' "$DOCKER_COMPOSE_PATH" > "$TEMP_FILE"
                 mv "$TEMP_FILE" "$DOCKER_COMPOSE_PATH"
-                
+
                 echo -e "${GREEN}✓ Port mapping ajouté${NC}"
             else
                 echo -e "${RED}✗ Impossible de trouver 'database:' dans le fichier${NC}"
             fi
-            
+
             # Redémarrer Docker Compose
             echo -e "${YELLOW}→ Redémarrage des conteneurs...${NC}"
             docker-compose up -d 2>/dev/null || docker compose up -d 2>/dev/null || true
-            
+
             echo -e "${GREEN}✓ Docker redémarré${NC}"
         fi
     else
         echo -e "${GREEN}✓ PostgreSQL déjà exposé sur le port 5432${NC}"
     fi
-    
+
     # Mettre à jour le chemin dans setup
     sed -i "s|docker_path=.*|docker_path=$DOCKER_COMPOSE_PATH|" "$WWW_DEST/cgi-bin/setup"
 else
@@ -511,16 +511,16 @@ if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     CRON_INTERVAL="5"
     read -p "Intervalle en minutes (défaut: 5) : " USER_INTERVAL
     [ -n "$USER_INTERVAL" ] && CRON_INTERVAL="$USER_INTERVAL"
-    
+
     CRON_LINE="*/$CRON_INTERVAL * * * * /root/teslacharge.sh >> /var/log/teslacharge.log 2>&1"
-    
+
     # Ajouter au crontab si pas déjà présent
     (crontab -l 2>/dev/null | grep -v "teslacharge.sh"; echo "$CRON_LINE") | crontab -
-    
+
     # Créer le fichier de log
     touch /var/log/teslacharge.log
     chmod 644 /var/log/teslacharge.log
-    
+
     echo -e "${GREEN}✓ Cron configuré : vérification toutes les $CRON_INTERVAL minutes${NC}"
 else
     echo -e "${CYAN}ℹ Configuration cron ignorée${NC}"
@@ -557,7 +557,7 @@ echo ""
 
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     echo "Test d'installation TeslaMate Mail - $(date)" | mail -s "Test TeslaMate Mail" -r "$SMTP_FROM" "$DEFAULT_EMAIL" 2>&1
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Email de test envoyé${NC}"
     else
