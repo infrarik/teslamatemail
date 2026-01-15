@@ -28,10 +28,10 @@ try {
     $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Requête avec TOUS les champs disponibles
+    // Requête avec TOUS les champs disponibles + état réel
     $sql = "SELECT 
                 c.name,
-                s.state,
+                (SELECT state FROM public.states WHERE car_id = c.id ORDER BY start_date DESC LIMIT 1) as state,
                 p.date,
                 p.latitude,
                 p.longitude,
@@ -61,7 +61,6 @@ try {
                 p.tpms_pressure_rr
             FROM public.cars c
             JOIN public.positions p ON p.car_id = c.id
-            JOIN public.states s ON s.car_id = c.id
             ORDER BY p.date DESC LIMIT 1";
             
     $stmt = $pdo->query($sql);
