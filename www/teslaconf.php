@@ -25,18 +25,26 @@ $config = [
 if (file_exists($config_file)) {
     $lines = file($config_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
+        // Ignorer les commentaires
         if (strpos(trim($line), '#') === 0) continue;
+        
+        // Séparer la clé et la valeur
         $parts = explode('=', $line, 2);
         if (count($parts) === 2) {
-            $key = strtolower(trim($parts[0]));
-            $val = trim($parts[1]);
+            $key = strtolower(trim($parts[0])); // On force la clé en minuscule pour la correspondance
+            $val = trim($parts[1]);             // On garde la valeur telle quelle (casse respectée)
+            
             if (array_key_exists($key, $config)) {
                 $config[$key] = $val;
             }
         }
     }
 } else {
-    $default_content = "### TeslaMate Config Initialized ###\nmqtt_host=\nmqtt_port=1883\nmqtt_user=\nmqtt_pass=\nmqtt_topic=teslamate/cars/1\nnotification_email=\ndocker_path=\ntelegram_bot_token=\n";
+    // Création du fichier par défaut si inexistant
+    $default_content = "### TeslaMate Config Initialized ###\n";
+    foreach ($config as $k => $v) {
+        $default_content .= "{$k}={$v}\n";
+    }
     file_put_contents($config_file, $default_content);
 }
 
@@ -191,7 +199,6 @@ if (isset($_POST['add_telegram_user'])) {
           <ol class="list-decimal ml-4 space-y-1">
             <li>Recherchez <strong>@BotFather</strong> dans Telegram</li>
             <li>Envoyez la commande <code class="bg-black/30 px-1 rounded">/newbot</code></li>
-            <li>Suivez les instructions pour créer votre bot</li>
             <li>Copiez le <strong>token</strong> fourni et collez-le ci-dessus</li>
           </ol>
         </div>
@@ -209,34 +216,34 @@ if (isset($_POST['add_telegram_user'])) {
 
         <div class="space-y-2">
           <label class="text-sm text-gray-400 ml-1">Chemin vers docker-compose.yml</label>
-          <input type="text" name="docker_path" value="<?php echo htmlspecialchars($config['docker_path']); ?>" placeholder="/home/user/teslamate/docker-compose.yml" required
-            class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-white">
+          <input type="text" name="docker_path" value="<?php echo htmlspecialchars($config['docker_path']); ?>" placeholder="/opt/teslamate/docker-compose.yml" required
+            class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-white font-mono text-sm">
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-4 pt-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
         <button type="button" id="btnTestMqtt"
-          class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+          class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2">
           <span>TEST MQTT</span>
           <div id="loader" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
         </button>
 
         <button type="button" id="btnTestEmail"
-          class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+          class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2">
           <span>TEST EMAIL</span>
           <div id="loaderEmail" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
         </button>
 
         <button type="button" id="btnTestTelegram"
-          class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+          class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2">
           <span>TEST TELEGRAM</span>
           <div id="loaderTelegram" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
         </button>
 
-        <div class="col-span-3">
+        <div class="md:col-span-3">
           <button type="submit"   
             class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98]">
-            SAUVEGARDER
+            SAUVEGARDER LA CONFIGURATION GÉNÉRALE
           </button>
         </div>
       </div>
@@ -260,7 +267,7 @@ if (isset($_POST['add_telegram_user'])) {
         <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center">
-              <span class="text-cyan-400 font-bold"><?php echo strtoupper(substr($user['name'], 0, 1)); ?></span>
+              <span class="text-cyan-400 font-bold"><?php echo strtoupper(substr($user['name'] ?? 'U', 0, 1)); ?></span>
             </div>
             <div>
               <div class="font-semibold"><?php echo htmlspecialchars($user['name']); ?></div>
@@ -298,7 +305,7 @@ if (isset($_POST['add_telegram_user'])) {
               class="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all text-white font-mono">
           </div>
         </div>
-         
+          
         <button type="submit" name="add_telegram_user"
           class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,9 +318,7 @@ if (isset($_POST['add_telegram_user'])) {
           <p class="font-semibold mb-1">💡 Comment obtenir votre Chat ID :</p>
           <ol class="list-decimal ml-4 space-y-1">
             <li>Recherchez <strong>@userinfobot</strong> dans Telegram</li>
-            <li>Démarrez une conversation avec ce bot</li>
-            <li>Le bot vous donnera votre <strong>Chat ID</strong></li>
-            <li>Copiez ce numéro dans le champ ci-dessus</li>
+            <li>Démarrez une conversation avec lui pour obtenir votre ID</li>
           </ol>
         </div>
       </form>
@@ -322,7 +327,6 @@ if (isset($_POST['add_telegram_user'])) {
   </div>
 
   <script>
-    // --- FONCTION COMMUNE POUR AFFICHER LE RESULTAT ---
     function showResult(type, message) {
         const resultZone = document.getElementById('testResult');
         resultZone.classList.remove('hidden');
@@ -336,110 +340,50 @@ if (isset($_POST['add_telegram_user'])) {
         resultZone.innerText = message;
     }
 
-    // --- TEST MQTT ---
-    document.getElementById('btnTestMqtt').addEventListener('click', async function() {
-        const btn = this;
-        const loader = document.getElementById('loader');
+    // Gestion des clics boutons tests (MQTT, Email, Telegram)
+    async function runTest(endpoint, bodyData, btnId, loaderId) {
+        const btn = document.getElementById(btnId);
+        const loader = document.getElementById(loaderId);
+        btn.disabled = true;
+        loader.classList.remove('hidden');
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: bodyData
+            });
+            const data = await response.json();
+            if(data.success) {
+                showResult('success', "✅ Succès !");
+            } else {
+                showResult('error', "❌ Erreur : " + data.message);
+            }
+        } catch (e) {
+            showResult('warning', "⚠ Erreur réseau ou serveur.");
+        } finally {
+            btn.disabled = false;
+            loader.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('btnTestMqtt').addEventListener('click', function() {
         const host = document.getElementById('mqtt_host').value;
         const port = document.getElementById('mqtt_port').value;
         const user = document.getElementById('mqtt_user').value;
         const pass = document.getElementById('mqtt_pass').value;
         const topic = document.getElementById('mqtt_topic').value;
-
-        if(!host || !port || !topic) {
-            alert("Veuillez remplir l'hôte, le port et le topic.");
-            return;
-        }
-
-        btn.disabled = true;
-        loader.classList.remove('hidden');
-
-        try {
-            const response = await fetch('test_mqtt.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `host=${encodeURIComponent(host)}&port=${encodeURIComponent(port)}&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}&topic=${encodeURIComponent(topic)}`
-            });
-            const data = await response.json();
-            if(data.success) {
-                showResult('success', "✅ Succès : MQTT opérationnel !");
-            } else {
-                showResult('error', "❌ Échec MQTT : " + data.message);
-            }
-        } catch (e) {
-            showResult('warning', "⚠ Erreur réseau MQTT.");
-        } finally {
-            btn.disabled = false;
-            loader.classList.add('hidden');
-        }
+        runTest('test_mqtt.php', `host=${encodeURIComponent(host)}&port=${encodeURIComponent(port)}&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}&topic=${encodeURIComponent(topic)}`, 'btnTestMqtt', 'loader');
     });
 
-    // --- TEST EMAIL ---
-    document.getElementById('btnTestEmail').addEventListener('click', async function() {
-        const btn = this;
-        const loader = document.getElementById('loaderEmail');
+    document.getElementById('btnTestEmail').addEventListener('click', function() {
         const email = document.getElementById('notification_email').value;
-
-        if(!email) {
-            alert("Veuillez saisir une adresse email.");
-            return;
-        }
-
-        btn.disabled = true;
-        loader.classList.remove('hidden');
-
-        try {
-            const response = await fetch('test_email.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `email=${encodeURIComponent(email)}`
-            });
-            const data = await response.json();
-            if(data.success) {
-                showResult('success', "✅ Succès : Email de test envoyé !");
-            } else {
-                showResult('error', "❌ Échec Email : " + data.message);
-            }
-        } catch (e) {
-            showResult('warning', "⚠ Erreur réseau Email.");
-        } finally {
-            btn.disabled = false;
-            loader.classList.add('hidden');
-        }
+        runTest('test_email.php', `email=${encodeURIComponent(email)}`, 'btnTestEmail', 'loaderEmail');
     });
 
-    // --- TEST TELEGRAM ---
-    document.getElementById('btnTestTelegram').addEventListener('click', async function() {
-        const btn = this;
-        const loader = document.getElementById('loaderTelegram');
+    document.getElementById('btnTestTelegram').addEventListener('click', function() {
         const token = document.getElementById('telegram_bot_token').value;
-
-        if(!token) {
-            alert("Veuillez saisir le token du bot Telegram.");
-            return;
-        }
-
-        btn.disabled = true;
-        loader.classList.remove('hidden');
-
-        try {
-            const response = await fetch('test_telegram.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `token=${encodeURIComponent(token)}`
-            });
-            const data = await response.json();
-            if(data.success) {
-                showResult('success', "✅ Succès : Message Telegram envoyé !");
-            } else {
-                showResult('error', "❌ Échec Telegram : " + data.message);
-            }
-        } catch (e) {
-            showResult('warning', "⚠ Erreur réseau Telegram.");
-        } finally {
-            btn.disabled = false;
-            loader.classList.add('hidden');
-        }
+        runTest('test_telegram.php', `token=${encodeURIComponent(token)}`, 'btnTestTelegram', 'loaderTelegram');
     });
   </script>
 </body>
