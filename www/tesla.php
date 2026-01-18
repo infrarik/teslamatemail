@@ -84,12 +84,15 @@ try {
       }
       if (!carData) return;
 
+      // Correction : Utilisation de carData.name (pour afficher F-HEAVY)
+      const carName = carData.name || 'Ma Tesla';
+
       app.innerHTML = `
         <div class="min-h-screen pb-20">
           <div class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 p-4 sticky top-0 z-10">
             <div class="max-w-2xl mx-auto flex flex-col items-center space-y-4">
               <div class="text-center py-1">
-                <h1 class="text-2xl font-bold text-white tracking-tight">${carData.display_name}</h1>
+                <h1 class="text-2xl font-bold text-white tracking-tight">${carName}</h1>
                 <h2 class="text-xl font-bold text-red-600">TeslaMate</h2>
               </div>
               <div class="w-full flex items-center justify-between">
