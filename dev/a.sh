@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# 21h09
 # --- CONFIGURATION ---
 CONFIGFILE="/var/www/html/cgi-bin/setup"
 STATEFILE="/var/www/html/cgi-bin/lastchargeid"
