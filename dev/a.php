@@ -1,220 +1,216 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// --- 1. LECTURE DU SETUP ---
+// --- 1. CONFIGURATION ---
 $file = 'cgi-bin/setup';
-$config = ['DOCKER_PATH' => ''];
+$config = [];
 if (file_exists($file)) {
     $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $parts = explode('=', $line, 2);
         if (count($parts) === 2) { 
-            // On convertit la clé en majuscules pour éviter les erreurs de saisie
-            $key = strtoupper(trim($parts[0]));
-            $config[$key] = trim($parts[1]); 
+            $config[strtoupper(trim($parts[0]))] = trim($parts[1]); 
         }
     }
 }
 
-// --- 2. EXTRACTION IDENTIFIANTS ---
+// Valeurs par défaut
 $db_user = "teslamate"; 
 $db_pass = "secret_password"; 
 $db_name = "teslamate";
-$source_config = "Valeurs par défaut (fallback)";
+$docker_source = "Défaut (non trouvé)";
 
-// On vérifie si DOCKER_PATH existe maintenant (grâce au strtoupper ci-dessus)
 if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
     $docker_content = file_get_contents($config['DOCKER_PATH']);
-    $found = false;
-    
-    if (preg_match('/POSTGRES_USER[:=]\s*(\S+)/', $docker_content, $m)) {
-        $db_user = str_replace(['"', "'"], '', trim($m[1]));
-        $found = true;
-    }
-    if (preg_match('/POSTGRES_PASSWORD[:=]\s*(\S+)/', $docker_content, $m)) {
-        $db_pass = str_replace(['"', "'"], '', trim($m[1]));
-        $found = true;
-    }
-    if (preg_match('/POSTGRES_DB[:=]\s*(\S+)/', $docker_content, $m)) {
-        $db_name = str_replace(['"', "'"], '', trim($m[1]));
-        $found = true;
-    }
-    
-    if ($found) {
-        $source_config = "Extrait de : " . $config['DOCKER_PATH'];
-    }
-} else {
-    $path_tente = $config['DOCKER_PATH'] ?? 'vide';
-    $source_config = "Fichier Docker introuvable à : " . $path_tente;
+    $docker_source = $config['DOCKER_PATH'];
+    if (preg_match('/POSTGRES_USER[:=]\s*(\S+)/', $docker_content, $m)) $db_user = str_replace(['"', "'"], '', trim($m[1]));
+    if (preg_match('/POSTGRES_PASSWORD[:=]\s*(\S+)/', $docker_content, $m)) $db_pass = str_replace(['"', "'"], '', trim($m[1]));
+    if (preg_match('/POSTGRES_DB[:=]\s*(\S+)/', $docker_content, $m)) $db_name = str_replace(['"', "'"], '', trim($m[1]));
 }
 
-// --- 3. RÉCUPÉRATION DES DONNÉES ---
-$error_message = ""; $trajets = []; $positions = [];
-$selected_date = $_GET['date'] ?? date('Y-m-d');
-$selected_drive_id = $_GET['drive_id'] ?? null;
-$total_km = 0; $total_kwh = 0;
-
+// --- 2. RÉCUPÉRATION SQL DE LA DERNIÈRE CHARGE ---
+$last_charge_kwh = 0;
 try {
-    $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    
-    $pdo->exec("SET TIME ZONE 'Europe/Paris'");
-    date_default_timezone_set('Europe/Paris');
-
-    $sql_trajets = "SELECT d.id, 
-                           (d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') as start_date_local, 
-                           ROUND(d.distance::numeric, 1) as km,
-                           a_e.display_name as end_point
-                    FROM drives d
-                    LEFT JOIN addresses a_e ON d.end_address_id = a_e.id
-                    WHERE DATE(d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date
-                    ORDER BY d.start_date DESC";
-    
-    $stmt = $pdo->prepare($sql_trajets);
-    $stmt->execute(['date' => $selected_date]);
-    $trajets = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($trajets as $t) $total_km += $t['km'];
-
-    $sql_charge = "SELECT SUM(charge_energy_added) as kwh 
-                   FROM charging_processes 
-                   WHERE DATE(end_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date";
-    
-    $stmt_c = $pdo->prepare($sql_charge);
-    $stmt_c->execute(['date' => $selected_date]);
-    $total_kwh = round((float)($stmt_c->fetchColumn() ?? 0), 1);
-
-    if ($selected_drive_id) {
-        $stmt_p = $pdo->prepare("SELECT latitude, longitude, speed FROM positions WHERE drive_id = ? AND latitude IS NOT NULL ORDER BY date ASC");
-        $stmt_p->execute([$selected_drive_id]);
-        $positions = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-} catch (PDOException $e) { 
-    $error_message = "Erreur SQL : " . $e->getMessage(); 
+    $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass);
+    $sql = "SELECT charge_energy_added FROM charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1";
+    $result = $pdo->query($sql)->fetchColumn();
+    $last_charge_kwh = $result ? round((float)$result, 2) : 0;
+} catch (Exception $e) {
+    $last_charge_kwh = 0;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>TeslaMap Historique</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { font-family: -apple-system, sans-serif; background: #111; color: #eee; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 380px; background: #1c1c1c; border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 10; }
-        #map-container { flex: 1; position: relative; background: #000; }
-        #map { height: 100%; width: 100%; }
-        .header { padding: 15px 20px; background: #252525; border-bottom: 1px solid #333; }
-        .top-nav { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-        .back-button { width: 35px; height: 35px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.3s; text-decoration: none; }
-        .back-button:hover { background: #dc2626; }
-        .back-button svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2.5; }
-        .date-picker { width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; outline: none; }
-        .debug-box { background: #2a2000; border: 1px solid #665500; padding: 10px; margin-bottom: 15px; font-family: monospace; font-size: 11px; color: #ffcc00; border-radius: 4px; overflow-x: auto; }
-        .stats-bar { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; }
-        .stats-date { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 8px; text-transform: capitalize; }
-        .stats-grid { display: flex; justify-content: space-between; font-size: 13px; }
-        .km-val { color: #dc2626; font-weight: bold; font-size: 15px; }
-        .kwh-val { color: #3b82f6; font-weight: bold; font-size: 15px; }
-        .list-container { flex: 1; overflow-y: auto; padding: 10px; }
-        .trajet-card { background: #2a2a2a; border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
-        .trajet-card:hover { background: #333; }
-        .trajet-card.active { border-color: #dc2626; background: #331a1a; }
-        .trajet-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .time { font-weight: bold; color: #fff; }
-        .addr { font-size: 11px; color: #aaa; line-height: 1.4; }
-        .legend { position: absolute; bottom: 30px; right: 20px; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px; border: 1px solid #444; z-index: 1000; font-size: 11px; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 4px; gap: 8px; }
-        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#dc2626">
+  <title>TeslaMate Mobile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
 </head>
-<body>
+<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white min-h-screen">
+  <div id="app"></div>
 
-<div id="sidebar">
-    <div class="header">
-        <div class="top-nav">
-            <a href="tesla.php" class="back-button">
-                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </a>
-            <h1 style="margin:0; font-size:18px; color:#dc2626;">TeslaMap Historique</h1>
-        </div>
+  <script>
+    const API_URL = 'teslamate_api.php';
+    const REFRESH_INTERVAL = 30; 
+    const PHP_LAST_CHARGE = <?= $last_charge_kwh ?>;
+    let carData = null;
+    let loading = false;
+    let error = null;
 
-        <div class="debug-box">
-            <strong>DB Debug :</strong><br>
-            Source : <?= htmlspecialchars($source_config) ?><br>
-            User : <?= htmlspecialchars($db_user) ?><br>
-            Pass : <?= htmlspecialchars($db_pass) ?><br>
-            DB : <?= htmlspecialchars($db_name) ?>
-        </div>
-
-        <input type="date" class="date-picker" value="<?= $selected_date ?>" onchange="location.href='?date='+this.value">
-    </div>
-
-    <div class="stats-bar">
-        <div class="stats-date"><?= date('d M Y', strtotime($selected_date)) ?></div>
-        <div class="stats-grid">
-            <span>Distance : <span class="km-val"><?= number_format($total_km, 1, ',', ' ') ?> km</span></span>
-            <span>Chargé : <span class="kwh-val"><?= number_format($total_kwh, 1, ',', ' ') ?> kWh</span></span>
-        </div>
-    </div>
-
-    <div class="list-container">
-        <?php if ($error_message) echo "<div style='color:#ff8888; padding:10px;'>$error_message</div>"; ?>
-        <?php if (empty($trajets) && !$error_message) echo "<p style='text-align:center; color:#666;'>Aucun trajet enregistré.</p>"; ?>
-        
-        <?php foreach ($trajets as $t): ?>
-            <div class="trajet-card <?= $selected_drive_id == $t['id'] ? 'active' : '' ?>" 
-                 onclick="location.href='?date=<?= $selected_date ?>&drive_id=<?= $t['id'] ?>'">
-                <div class="trajet-header">
-                    <span class="time"><?= date('H:i', strtotime($t['start_date_local'])) ?></span>
-                    <span class="km-val"><?= $t['km'] ?> km</span>
-                </div>
-                <div class="addr">Vers : <?= htmlspecialchars($t['end_point'] ?? 'Inconnu') ?></div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-
-<div id="map-container">
-    <div id="map"></div>
-    <?php if (!empty($positions)): ?>
-    <div class="legend">
-        <div class="legend-item"><div class="legend-color" style="background:#22c55e;"></div><span>0-30 km/h</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#eab308;"></div><span>31-50 km/h</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#f97316;"></div><span>51-80 km/h</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#dc2626;"></div><span>> 110 km/h</span></div>
-    </div>
-    <?php endif; ?>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const map = L.map('map').setView([46.6, 2.2], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(map);
-
-    function getColor(speed) {
-        if (speed <= 30) return '#22c55e';
-        if (speed <= 50) return '#eab308';
-        if (speed <= 80) return '#f97316';
-        if (speed <= 110) return '#92400e';
-        return '#dc2626';
+    async function fetchData() {
+      loading = true; render();
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        carData = data; 
+        error = null;
+      } catch (err) { 
+        error = err.message; 
+      } finally { 
+        loading = false; 
+        render(); 
+      }
     }
 
-    <?php if (!empty($positions)): ?>
-        const pos = <?= json_encode($positions) ?>;
-        for (let i = 0; i < pos.length - 1; i++) {
-            L.polyline([[pos[i].latitude, pos[i].longitude], [pos[i+1].latitude, pos[i+1].longitude]], {
-                color: getColor(parseFloat(pos[i].speed || 0)),
-                weight: 5, opacity: 0.9
-            }).addTo(map);
-        }
-        const pts = pos.map(p => [p.latitude, p.longitude]);
-        map.fitBounds(L.latLngBounds(pts), {padding: [50, 50]});
-        L.marker(pts[0]).addTo(map).bindPopup("Départ");
-        L.marker(pts[pts.length - 1]).addTo(map).bindPopup("Arrivée");
-    <?php endif; ?>
-</script>
+    function render() {
+      const app = document.getElementById('app');
+      if (loading && !carData) { 
+          app.innerHTML = `<div class="min-h-screen flex items-center justify-center text-gray-400">Chargement...</div>`; 
+          return; 
+      }
+      if (error && !carData) { 
+          app.innerHTML = `<div class="p-6 text-center text-red-500">${error}</div>`; 
+          return; 
+      }
+      if (!carData) return;
+
+      const carName = carData.name || 'Ma Tesla';
+
+      app.innerHTML = `
+        <div class="min-h-screen pb-20">
+          <div class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 p-4 sticky top-0 z-10">
+            <div class="max-w-2xl mx-auto flex flex-col items-center space-y-4">
+              <div class="text-center py-1">
+                <h1 class="text-2xl font-bold text-white tracking-tight">${carName}</h1>
+                <h2 class="text-xl font-bold text-red-600">TeslaMate</h2>
+              </div>
+              <div class="w-full flex items-center justify-between">
+                <div class="w-10"></div>
+                <div class="flex-1 flex justify-center items-center gap-4">
+                  <a href="teslamap.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A2 2 0 013 15.488V5.13a2 2 0 011.106-1.789L9 1m0 19v-19m0 19l6-3m-6-16l6 3m0 0l5.447-2.724A2 2 0 0121 4.512v10.358a2 2 0 01-1.106 1.789L15 20m0-19v19"></path></svg></a>
+                  <a href="teslamail.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></a>
+                  <a href="teslacalcul.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></a>
+                  <a href="teslaconf.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg></a>
+                </div>
+                <button onclick="fetchData()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors shadow-lg">
+                  <svg class="w-5 h-5 ${loading ? 'animate-spin text-red-500' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 pt-6 space-y-4 max-w-2xl mx-auto">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-4 border border-gray-700 shadow-xl">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-1">État</p>
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full ${carData.state === 'online' ? 'bg-green-500' : 'bg-gray-500'}"></div>
+                  <span class="text-lg font-bold">${carData.state}</span>
+                </div>
+              </div>
+              <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-4 border border-gray-700 shadow-xl text-right">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Kilométrage</p>
+                <span class="text-lg font-bold">${Math.round(carData.odometer).toLocaleString()} <span class="text-xs text-gray-400">km</span></span>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-green-900/20 to-gray-900 rounded-3xl p-6 border border-green-700/30 shadow-2xl relative overflow-hidden">
+              <div class="flex items-center gap-3 mb-6">
+                <div class="p-3 bg-green-500/20 rounded-xl"><svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+                <h2 class="text-xl font-bold">Batterie</h2>
+              </div>
+              <div class="flex justify-between items-end mb-4">
+                <span class="text-6xl font-black text-green-400 tracking-tighter">${carData.battery_level}%</span>
+                <div class="text-right">
+                  <p class="text-gray-400 text-sm">Autonomie estimée</p>
+                  <p class="text-2xl font-bold">${Math.round(carData.est_battery_range_km)} <span class="text-sm font-normal">km</span></p>
+                </div>
+              </div>
+              <div class="w-full bg-gray-800 rounded-full h-4 p-0.5 border border-gray-700">
+                <div class="bg-gradient-to-r from-green-600 to-green-400 h-full rounded-full transition-all duration-1000" style="width: ${carData.battery_level}%"></div>
+              </div>
+            </div>
+
+            <div class="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 shadow-xl grid grid-cols-2 gap-8">
+                <div class="text-center">
+                  <p class="text-xs font-bold text-gray-500 uppercase mb-2">Intérieur</p>
+                  <p class="text-4xl font-bold text-orange-400">${parseFloat(carData.inside_temp || 0).toFixed(1)}°</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-xs font-bold text-gray-500 uppercase mb-2">Extérieur</p>
+                  <p class="text-4xl font-bold text-blue-400">${parseFloat(carData.outside_temp || 0).toFixed(1)}°</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-6 border border-gray-700 shadow-xl">
+              <div class="flex items-center gap-3 mb-6">
+                <div class="p-3 bg-blue-500/20 rounded-xl"><svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                <h2 class="text-xl font-bold">Pneus <span class="text-sm font-normal text-gray-500">(bar)</span></h2>
+              </div>
+              <div class="grid grid-cols-2 gap-6 relative">
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-full bg-gray-700/50"></div>
+                <div class="space-y-6">
+                  <div class="text-center">
+                    <p class="text-[10px] text-gray-500 font-black uppercase">Avant Gauche</p>
+                    <p class="text-3xl font-bold ${carData.tpms_pressure_fl < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_fl || 0).toFixed(1)}</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[10px] text-gray-500 font-black uppercase">Arrière Gauche</p>
+                    <p class="text-3xl font-bold ${carData.tpms_pressure_rl < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_rl || 0).toFixed(1)}</p>
+                  </div>
+                </div>
+                <div class="space-y-6">
+                  <div class="text-center">
+                    <p class="text-[10px] text-gray-500 font-black uppercase">Avant Droit</p>
+                    <p class="text-3xl font-bold ${carData.tpms_pressure_fr < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_fr || 0).toFixed(1)}</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[10px] text-gray-500 font-black uppercase">Arrière Droit</p>
+                    <p class="text-3xl font-bold ${carData.tpms_pressure_rr < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_rr || 0).toFixed(1)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-blue-600/20 rounded-2xl p-5 border border-blue-500/30 text-center shadow-xl">
+                <p class="text-sm font-bold text-blue-400 uppercase mb-1">Dernière charge terminée</p>
+                <p class="text-4xl font-black text-white">${PHP_LAST_CHARGE} <span class="text-xl font-normal text-blue-300">kWh ajoutés</span></p>
+            </div>
+
+            <div class="bg-gray-800/30 rounded-xl p-4 border border-gray-700 mt-8">
+                <p class="text-[10px] text-gray-500 font-bold uppercase mb-2">Diagnostic PostgreSQL</p>
+                <div class="grid grid-cols-1 gap-1 text-[11px] font-mono text-gray-400">
+                    <div><span class="text-gray-600">Source :</span> <?= $docker_source ?></div>
+                    <div><span class="text-gray-600">DB_USER :</span> <?= $db_user ?></div>
+                    <div><span class="text-gray-600">DB_PASS :</span> <?= $db_pass ?></div>
+                    <div><span class="text-gray-600">DB_NAME :</span> <?= $db_name ?></div>
+                </div>
+            </div>
+            
+            <p class="text-center text-[10px] text-gray-600 pt-4 uppercase tracking-widest">Mise à jour automatique toutes les 30s</p>
+          </div>
+        </div>
+      `;
+    }
+
+    fetchData();
+    setInterval(fetchData, REFRESH_INTERVAL * 1000);
+  </script>
 </body>
 </html>
