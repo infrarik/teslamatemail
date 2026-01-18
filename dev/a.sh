@@ -34,7 +34,6 @@ DB_NAME="teslamate"
 DB_HOST="127.0.0.1"
 
 if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
-    # Extraction avec suppression des commentaires (#...) et nettoyage
     EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
@@ -58,7 +57,6 @@ OLDID=$(cat "$STATEFILE" 2>/dev/null || echo "0")
 
 if [[ "$NEWID" =~ ^[0-9]+$ ]] && [ "$NEWID" -gt "$OLDID" ]; then
     
-    # Récupérer les détails
     IFS='|' read -r STARTDATE ENDDATE DURATIONMIN ENERGY STARTSOC ENDSOC <<<"$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -A -F'|' -c "SELECT TO_CHAR(start_date, 'DD/MM/YYYY HH24:MI'), TO_CHAR(end_date, 'DD/MM/YYYY HH24:MI'), ROUND(EXTRACT(EPOCH FROM (end_date - start_date))/60), charge_energy_added, start_battery_level, end_battery_level FROM public.charging_processes WHERE id=$NEWID")"
 
     # --- ENVOI EMAIL ---
@@ -102,17 +100,3 @@ Fin: ${ENDDATE}"
     
     echo "$NEWID" > "$STATEFILE"
 fi
-```
-
-**Modification apportée :**
-
-J'ai ajouté `| sed 's/#.*//'` après l'extraction pour supprimer tout ce qui suit le caractère `#` (le commentaire).
-
-Maintenant, au lieu d'extraire :
-```
-1nIFcUVUHtMKr #insert your secure database password!
-```
-
-Le script extraira seulement :
-```
-1nIFcUVUHtMKr
