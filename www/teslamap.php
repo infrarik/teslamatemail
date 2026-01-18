@@ -195,8 +195,23 @@ try {
         }
         const pts = pos.map(p => [p.latitude, p.longitude]);
         map.fitBounds(L.latLngBounds(pts), {padding: [50, 50]});
-        L.marker(pts[0]).addTo(map).bindPopup("Départ");
-        L.marker(pts[pts.length - 1]).addTo(map).bindPopup("Arrivée");
+        
+        const departIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background:#22c55e; color:#fff; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px; border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,0.5);">D</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+        
+        const arriveeIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background:#dc2626; color:#fff; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px; border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,0.5);">A</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+        
+        L.marker(pts[0], {icon: departIcon}).addTo(map).bindPopup("Départ");
+        L.marker(pts[pts.length - 1], {icon: arriveeIcon}).addTo(map).bindPopup("Arrivée");
     <?php endif; ?>
 </script>
 </body>
