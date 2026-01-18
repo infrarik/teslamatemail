@@ -27,26 +27,22 @@ else
     exit 1
 fi
 
-# --- EXTRACTION DES INFOS DB (AVEC SUPPRESSION DES COMMENTAIRES) ---
+# --- EXTRACTION DES INFOS DB ---
 DB_USER="teslamate"
 DB_PASS="secret"
 DB_NAME="teslamate"
 DB_HOST="127.0.0.1"
 
 if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
-    # La logique : 
-    # 1. On prend la ligne
-    # 2. On coupe après le : ou = 
-    # 3. On coupe tout ce qui commence par un espace ou un # (pour ignorer les commentaires)
-    # 4. On nettoie les guillemets et retours chariots
-    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    # Extraction avec suppression des commentaires (#...) et nettoyage
+    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
 
     [ -n "$EXTRACT_USER" ] && DB_USER="$EXTRACT_USER"
     [ -n "$EXTRACT_PASS" ] && DB_PASS="$EXTRACT_PASS"
     [ -n "$EXTRACT_DB" ] && DB_NAME="$EXTRACT_DB"
-
+    
     echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
 else
     echo "ERREUR: Fichier Docker introuvable à l'emplacement : $DOCKER_PATH"
@@ -106,3 +102,17 @@ Fin: ${ENDDATE}"
     
     echo "$NEWID" > "$STATEFILE"
 fi
+```
+
+**Modification apportée :**
+
+J'ai ajouté `| sed 's/#.*//'` après l'extraction pour supprimer tout ce qui suit le caractère `#` (le commentaire).
+
+Maintenant, au lieu d'extraire :
+```
+1nIFcUVUHtMKr #insert your secure database password!
+```
+
+Le script extraira seulement :
+```
+1nIFcUVUHtMKr
