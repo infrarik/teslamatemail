@@ -27,16 +27,15 @@ else
     exit 1
 fi
 
-# --- EXTRACTION DES INFOS DB (NETTOYAGE RENFORCÉ) ---
+# --- EXTRACTION DES INFOS DB ---
 DB_USER="teslamate"
 DB_PASS="secret"
 DB_NAME="teslamate"
 DB_HOST="127.0.0.1"
 
 if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
-    # On utilise tr -d '\r' pour supprimer les retours chariots Windows
-    # On utilise sed pour supprimer les guillemets et tout ce qui précède le séparateur
-    # On utilise xargs pour trimmer les espaces
+    # Extraction alignée sur la logique PHP (capture après : ou =)
+    # On supprime les guillemets et on nettoie les retours chariots
     EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
@@ -44,23 +43,16 @@ if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
     [ -n "$EXTRACT_USER" ] && DB_USER="$EXTRACT_USER"
     [ -n "$EXTRACT_PASS" ] && DB_PASS="$EXTRACT_PASS"
     [ -n "$EXTRACT_DB" ] && DB_NAME="$EXTRACT_DB"
-
-    # Vérification visuelle avec des balises [] pour repérer d'éventuels espaces restants
-    echo "Infos DB extraites : User=[$DB_USER], DB=[$DB_NAME], Pass=[$DB_PASS]"
+    
+    echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
 else
-    echo "ERREUR: Fichier Docker/Env introuvable à l'emplacement : $DOCKER_PATH"
+    echo "ERREUR: Fichier Docker introuvable à l'emplacement : $DOCKER_PATH"
     exit 1
 fi
 
 # --- RÉCUPÉRATION DE LA CHARGE ---
-# Test de connexion immédiat
-NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" 2>&1 | tr -d ' ')
-
-# Si le résultat contient "error", on affiche le message et on quitte
-if [[ "$NEWID" == *"error"* ]] || [[ "$NEWID" == *"FATAL"* ]]; then
-    echo "ERREUR PSQL : $NEWID"
-    exit 1
-fi
+# On utilise PGPASSWORD avec des quotes pour protéger le mot de passe extrait
+NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" | tr -d ' ')
 
 if [ -z "$NEWID" ]; then exit 0; fi
 
@@ -69,6 +61,7 @@ OLDID=$(cat "$STATEFILE" 2>/dev/null || echo "0")
 if [[ "$NEWID" =~ ^[0-9]+$ ]] && [ "$NEWID" -gt "$OLDID" ]; then
     
     # Récupérer les détails
+    # Utilisation des quotes autour de $DB_PASS pour la sécurité
     IFS='|' read -r STARTDATE ENDDATE DURATIONMIN ENERGY STARTSOC ENDSOC <<<"$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -A -F'|' -c "SELECT TO_CHAR(start_date, 'DD/MM/YYYY HH24:MI'), TO_CHAR(end_date, 'DD/MM/YYYY HH24:MI'), ROUND(EXTRACT(EPOCH FROM (end_date - start_date))/60), charge_energy_added, start_battery_level, end_battery_level FROM public.charging_processes WHERE id=$NEWID")"
 
     # --- ENVOI EMAIL ---
