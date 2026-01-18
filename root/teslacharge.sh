@@ -7,19 +7,19 @@ USERSFILE="/var/www/html/cgi-bin/telegram_users.json"
 
 # --- CHARGEMENT DE LA CONFIGURATION SETUP ---
 if [ -f "$CONFIGFILE" ]; then
-    EMAIL=$(grep "^notification_email=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    EMAIL_ENABLED=$(grep "^email_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    MQTT_ENABLED=$(grep "^mqtt_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    TELEGRAM_ENABLED=$(grep "^telegram_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    TELEGRAM_TOKEN=$(grep "^telegram_bot_token=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    EMAIL=$(grep -i "^notification_email=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    EMAIL_ENABLED=$(grep -i "^email_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_ENABLED=$(grep -i "^mqtt_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    TELEGRAM_ENABLED=$(grep -i "^telegram_enabled=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    TELEGRAM_TOKEN=$(grep -i "^telegram_bot_token=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
     
-    MQTT_SERVER=$(grep "^mqtt_host=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    MQTT_PORT=$(grep "^mqtt_port=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    MQTT_TOPIC=$(grep "^mqtt_topic=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    MQTT_USER=$(grep "^mqtt_user=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
-    MQTT_PASS=$(grep "^mqtt_pass=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_SERVER=$(grep -i "^mqtt_host=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_PORT=$(grep -i "^mqtt_port=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_TOPIC=$(grep -i "^mqtt_topic=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_USER=$(grep -i "^mqtt_user=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    MQTT_PASS=$(grep -i "^mqtt_pass=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
     
-    DOCKER_PATH=$(grep "^docker_path=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
+    DOCKER_PATH=$(grep -i "^docker_path=" "$CONFIGFILE" | cut -d'=' -f2 | xargs)
     
     [ -z "$MQTT_PORT" ] && MQTT_PORT="1883"
 else
@@ -93,4 +93,3 @@ Fin: ${ENDDATE}"
     
     echo "$NEWID" > "$STATEFILE"
 fi
-
