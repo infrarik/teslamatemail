@@ -449,6 +449,11 @@ if [ -n "$DOCKER_COMPOSE_PATH" ]; then
     # Backup
     cp "$DOCKER_COMPOSE_PATH" "${DOCKER_COMPOSE_PATH}.backup.$(date +%Y%m%d-%H%M%S)"
 
+    # --- NETTOYAGE DES COMMENTAIRES ---
+    echo -e "${YELLOW}→ Nettoyage des commentaires dans le docker-compose...${NC}"
+    sed -i 's/[[:space:]]*#.*//' "$DOCKER_COMPOSE_PATH"
+    echo -e "${GREEN}✓ Commentaires supprimés${NC}"
+
     # Vérifier si PostgreSQL est exposé
     if ! grep -q "5432:5432" "$DOCKER_COMPOSE_PATH"; then
         echo -e "${YELLOW}→ PostgreSQL n'est pas exposé, modification nécessaire${NC}"
