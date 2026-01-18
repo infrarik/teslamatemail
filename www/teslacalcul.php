@@ -114,7 +114,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
             .info strong { color: #dc2626; }
             .print-btn { background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 20px 0; }
         </style></head><body>
-        <h1>Rapport de consommation TeslaMate</h1>
+        <h1>Liste des recharges via TeslaMate</h1>
         <div class="info">
             <p><strong>Période :</strong> ' . date('d/m/Y', strtotime($date_debut)) . ' au ' . date('d/m/Y', strtotime($date_fin)) . '</p>
             <p><strong>Charges :</strong> ' . $resultats['nb'] . '</p>
