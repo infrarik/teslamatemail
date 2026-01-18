@@ -9,7 +9,10 @@ if (file_exists($file)) {
     $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $parts = explode('=', $line, 2);
-        if (count($parts) === 2) { $config[trim($parts[0])] = trim($parts[1]); }
+        if (count($parts) === 2) { 
+            $key = strtoupper(trim($parts[0]));
+            $config[$key] = trim($parts[1]); 
+        }
     }
 }
 
@@ -31,11 +34,10 @@ $total_km = 0; $total_kwh = 0;
 try {
     $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     
-    // On force la timezone pour la session
     $pdo->exec("SET TIME ZONE 'Europe/Paris'");
     date_default_timezone_set('Europe/Paris');
 
-    // 3a. Requête des Trajets (Heure locale forcée)
+    // 3a. Requête des Trajets
     $sql_trajets = "SELECT d.id, 
                            (d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') as start_date_local, 
                            ROUND(d.distance::numeric, 1) as km,
@@ -51,7 +53,7 @@ try {
 
     foreach ($trajets as $t) $total_km += $t['km'];
 
-    // 3b. Requête des Charges (Basée sur ton script : charging_processes + charge_energy_added)
+    // 3b. Requête des Charges
     $sql_charge = "SELECT SUM(charge_energy_added) as kwh 
                    FROM charging_processes 
                    WHERE DATE(end_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date";
