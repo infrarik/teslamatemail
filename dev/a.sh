@@ -29,26 +29,31 @@ fi
 
 # --- EXTRACTION DES INFOS DB ---
 if [ -f "$DOCKER_PATH" ]; then
-    DB_USER=$(grep -E "DATABASE_USER|POSTGRES_USER" "$DOCKER_PATH" | head -1 | sed -e 's/.*[:=]//' -e 's/["'\'']//g' | xargs)
-    DB_PASS=$(grep -E "DATABASE_PASS|POSTGRES_PASSWORD" "$DOCKER_PATH" | head -1 | sed -e 's/.*[:=]//' -e 's/["'\'']//g' | xargs)
-    DB_NAME=$(grep -E "DATABASE_NAME|POSTGRES_DB" "$DOCKER_PATH" | head -1 | sed -e 's/.*[:=]//' -e 's/["'\'']//g' | xargs)
+    # Extraction améliorée pour gérer les formats : VARIABLE=valeur ou VARIABLE: valeur
+    DB_USER=$(grep -E "DATABASE_USER|POSTGRES_USER" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
+    DB_PASS=$(grep -E "DATABASE_PASS|POSTGRES_PASSWORD" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
+    DB_NAME=$(grep -E "DATABASE_NAME|POSTGRES_DB" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
     DB_HOST="127.0.0.1"  
 
+    # Valeurs par défaut uniquement si les variables sont vides après extraction
     [ -z "$DB_USER" ] && DB_USER="teslamate"
     [ -z "$DB_PASS" ] && DB_PASS="secret"
     [ -z "$DB_NAME" ] && DB_NAME="teslamate"
 
-    # Affichage des informations trouvées
-    echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
+    echo "Tentative de connexion avec : User=$DB_USER | DB=$DB_NAME | Pass=$DB_PASS"
 else
-    echo "ERREUR: Fichier Docker/Env introuvable à l'emplacement : $DOCKER_PATH"
+    echo "ERREUR: Le fichier spécifié dans DOCKER_PATH ($DOCKER_PATH) est introuvable."
     exit 1
 fi
 
 # --- RÉCUPÉRATION DE LA CHARGE ---
+# On utilise l'option -w pour ne jamais demander de mot de passe en interactif
 NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" | tr -d ' ')
 
-if [ -z "$NEWID" ]; then exit 0; fi
+if [ -z "$NEWID" ]; then 
+    echo "Aucune charge trouvée ou erreur de connexion."
+    exit 0
+fi
 
 OLDID=$(cat "$STATEFILE" 2>/dev/null || echo "0")
 
@@ -69,7 +74,7 @@ EOF
         echo "=> Email envoyé."
     fi
 
-    # --- ENVOI TELEGRAM (INTÉGRÉ) ---
+    # --- ENVOI TELEGRAM ---
     if [ "$TELEGRAM_ENABLED" == "True" ] && [ -n "$TELEGRAM_TOKEN" ] && [ -f "$USERSFILE" ]; then
         CHAT_ID=$(tr -d '[:space:]' < "$USERSFILE" | grep -oP '"chat_id":"\K[0-9]+')
         
