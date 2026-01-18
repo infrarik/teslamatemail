@@ -27,23 +27,26 @@ else
     exit 1
 fi
 
-# --- EXTRACTION DES INFOS DB ---
+# --- EXTRACTION DES INFOS DB (AVEC SUPPRESSION DES COMMENTAIRES) ---
 DB_USER="teslamate"
 DB_PASS="secret"
 DB_NAME="teslamate"
 DB_HOST="127.0.0.1"
 
 if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
-    # Extraction alignée sur la logique PHP (capture après : ou =)
-    # On supprime les guillemets et on nettoie les retours chariots
-    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    # La logique : 
+    # 1. On prend la ligne
+    # 2. On coupe après le : ou = 
+    # 3. On coupe tout ce qui commence par un espace ou un # (pour ignorer les commentaires)
+    # 4. On nettoie les guillemets et retours chariots
+    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//;s/[[:space:]]*#.*//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
 
     [ -n "$EXTRACT_USER" ] && DB_USER="$EXTRACT_USER"
     [ -n "$EXTRACT_PASS" ] && DB_PASS="$EXTRACT_PASS"
     [ -n "$EXTRACT_DB" ] && DB_NAME="$EXTRACT_DB"
-    
+
     echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
 else
     echo "ERREUR: Fichier Docker introuvable à l'emplacement : $DOCKER_PATH"
@@ -51,7 +54,6 @@ else
 fi
 
 # --- RÉCUPÉRATION DE LA CHARGE ---
-# On utilise PGPASSWORD avec des quotes pour protéger le mot de passe extrait
 NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" | tr -d ' ')
 
 if [ -z "$NEWID" ]; then exit 0; fi
@@ -61,7 +63,6 @@ OLDID=$(cat "$STATEFILE" 2>/dev/null || echo "0")
 if [[ "$NEWID" =~ ^[0-9]+$ ]] && [ "$NEWID" -gt "$OLDID" ]; then
     
     # Récupérer les détails
-    # Utilisation des quotes autour de $DB_PASS pour la sécurité
     IFS='|' read -r STARTDATE ENDDATE DURATIONMIN ENERGY STARTSOC ENDSOC <<<"$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -A -F'|' -c "SELECT TO_CHAR(start_date, 'DD/MM/YYYY HH24:MI'), TO_CHAR(end_date, 'DD/MM/YYYY HH24:MI'), ROUND(EXTRACT(EPOCH FROM (end_date - start_date))/60), charge_energy_added, start_battery_level, end_battery_level FROM public.charging_processes WHERE id=$NEWID")"
 
     # --- ENVOI EMAIL ---
