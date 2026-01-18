@@ -27,33 +27,33 @@ else
     exit 1
 fi
 
-# --- EXTRACTION DES INFOS DB ---
-if [ -f "$DOCKER_PATH" ]; then
-    # Extraction améliorée pour gérer les formats : VARIABLE=valeur ou VARIABLE: valeur
-    DB_USER=$(grep -E "DATABASE_USER|POSTGRES_USER" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
-    DB_PASS=$(grep -E "DATABASE_PASS|POSTGRES_PASSWORD" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
-    DB_NAME=$(grep -E "DATABASE_NAME|POSTGRES_DB" "$DOCKER_PATH" | head -1 | awk -F'[:=]' '{print $2}' | tr -d '"' | tr -d "'" | xargs)
-    DB_HOST="127.0.0.1"  
+# --- EXTRACTION DES INFOS DB (LOGIQUE ALIGNÉE SUR PHP) ---
+DB_USER="teslamate"
+DB_PASS="secret"
+DB_NAME="teslamate"
+DB_HOST="127.0.0.1"
 
-    # Valeurs par défaut uniquement si les variables sont vides après extraction
-    [ -z "$DB_USER" ] && DB_USER="teslamate"
-    [ -z "$DB_PASS" ] && DB_PASS="secret"
-    [ -z "$DB_NAME" ] && DB_NAME="teslamate"
+if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
+    # Utilisation de sed pour simuler le preg_match PHP : capture après : ou =
+    # On supprime les guillemets et on trim les espaces comme en PHP
+    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
+    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
+    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
 
-    echo "Tentative de connexion avec : User=$DB_USER | DB=$DB_NAME | Pass=$DB_PASS"
+    [ -n "$EXTRACT_USER" ] && DB_USER="$EXTRACT_USER"
+    [ -n "$EXTRACT_PASS" ] && DB_PASS="$EXTRACT_PASS"
+    [ -n "$EXTRACT_DB" ] && DB_NAME="$EXTRACT_DB"
+
+    echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
 else
-    echo "ERREUR: Le fichier spécifié dans DOCKER_PATH ($DOCKER_PATH) est introuvable."
+    echo "ERREUR: Fichier Docker/Env introuvable à l'emplacement : $DOCKER_PATH"
     exit 1
 fi
 
 # --- RÉCUPÉRATION DE LA CHARGE ---
-# On utilise l'option -w pour ne jamais demander de mot de passe en interactif
 NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" | tr -d ' ')
 
-if [ -z "$NEWID" ]; then 
-    echo "Aucune charge trouvée ou erreur de connexion."
-    exit 0
-fi
+if [ -z "$NEWID" ]; then exit 0; fi
 
 OLDID=$(cat "$STATEFILE" 2>/dev/null || echo "0")
 
