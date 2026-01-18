@@ -27,31 +27,40 @@ else
     exit 1
 fi
 
-# --- EXTRACTION DES INFOS DB (LOGIQUE ALIGNÉE SUR PHP) ---
+# --- EXTRACTION DES INFOS DB (NETTOYAGE RENFORCÉ) ---
 DB_USER="teslamate"
 DB_PASS="secret"
 DB_NAME="teslamate"
 DB_HOST="127.0.0.1"
 
 if [ -n "$DOCKER_PATH" ] && [ -f "$DOCKER_PATH" ]; then
-    # Utilisation de sed pour simuler le preg_match PHP : capture après : ou =
-    # On supprime les guillemets et on trim les espaces comme en PHP
-    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
-    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
-    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | xargs)
+    # On utilise tr -d '\r' pour supprimer les retours chariots Windows
+    # On utilise sed pour supprimer les guillemets et tout ce qui précède le séparateur
+    # On utilise xargs pour trimmer les espaces
+    EXTRACT_USER=$(grep -E "POSTGRES_USER|DATABASE_USER" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_PASS=$(grep -E "POSTGRES_PASSWORD|DATABASE_PASS" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    EXTRACT_DB=$(grep -E "POSTGRES_DB|DATABASE_NAME" "$DOCKER_PATH" | head -1 | sed -E 's/.*[:=]//' | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
 
     [ -n "$EXTRACT_USER" ] && DB_USER="$EXTRACT_USER"
     [ -n "$EXTRACT_PASS" ] && DB_PASS="$EXTRACT_PASS"
     [ -n "$EXTRACT_DB" ] && DB_NAME="$EXTRACT_DB"
 
-    echo "Infos DB extraites : User=$DB_USER, DB=$DB_NAME, Pass=$DB_PASS"
+    # Vérification visuelle avec des balises [] pour repérer d'éventuels espaces restants
+    echo "Infos DB extraites : User=[$DB_USER], DB=[$DB_NAME], Pass=[$DB_PASS]"
 else
     echo "ERREUR: Fichier Docker/Env introuvable à l'emplacement : $DOCKER_PATH"
     exit 1
 fi
 
 # --- RÉCUPÉRATION DE LA CHARGE ---
-NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" | tr -d ' ')
+# Test de connexion immédiat
+NEWID=$(PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -w --no-psqlrc --quiet -t -c "SELECT id FROM public.charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1" 2>&1 | tr -d ' ')
+
+# Si le résultat contient "error", on affiche le message et on quitte
+if [[ "$NEWID" == *"error"* ]] || [[ "$NEWID" == *"FATAL"* ]]; then
+    echo "ERREUR PSQL : $NEWID"
+    exit 1
+fi
 
 if [ -z "$NEWID" ]; then exit 0; fi
 
