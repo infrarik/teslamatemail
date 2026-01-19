@@ -42,6 +42,7 @@ $date_debut = $_POST['date_debut'] ?? date('Y-m-01');
 $date_fin = $_POST['date_fin'] ?? date('Y-m-d');
 $selected_geo = $_POST['geofence'] ?? 'TOUS';
 $export_complet = isset($_POST['export_complet']) ? 1 : 0;
+$cols = $_POST['cols'] ?? ['date', 'kwh', 'duree', 'km', 'ville', 'gps']; // Colonnes par défaut
 $status_message = ""; $status_type = "";
 
 if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST['telecharger_pdf']) || isset($_POST['telecharger_csv'])) {
@@ -78,14 +79,14 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
         foreach ($charges_par_jour as $c) {
             $d = $c['date_f'];
-            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'km' => 0, 'duree' => $c['duree'], 'lat' => $c['lat'], 'lon' => $c['lon'], 'ville' => $c['ville']];
+            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'duree' => $c['duree'], 'km' => 0, 'ville' => $c['ville'], 'gps' => round($c['lat'],5).','.round($c['lon'],5)];
             $total_kwh_accumule += $c['kwh'];
             if ($c['kwh'] > 0) $compteur_jours_charge++;
         }
         foreach ($trajets_par_jour as $t) {
             $d = $t['date_f'];
             if (!isset($temp_hist[$d])) {
-                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'km' => $t['km'], 'duree' => $t['duree'], 'lat' => 0, 'lon' => 0, 'ville' => ''];
+                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'duree' => $t['duree'], 'km' => $t['km'], 'ville' => '', 'gps' => ''];
             } else {
                 $temp_hist[$d]['km'] += $t['km'];
                 $temp_hist[$d]['duree'] += $t['duree'];
@@ -103,7 +104,12 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $to = $config['NOTIFICATION_EMAIL']; $subject = "Rapport TeslaMate - $date_debut au $date_fin";
         $body = "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
         foreach ($historique_fusionne as $l) {
-            $body .= date('d/m/Y', strtotime($l['date']))." | ".($l['ville']?:'-')." | ".($l['kwh']>0?round($l['kwh'],2).'kWh':'')." | ".($l['km']>0?round($l['km'],1).'km':'')."\n";
+            $line = [];
+            if(in_array('date', $cols)) $line[] = date('d/m/Y', strtotime($l['date']));
+            if(in_array('kwh', $cols)) $line[] = ($l['kwh']>0?round($l['kwh'],2).'kWh':'');
+            if(in_array('km', $cols)) $line[] = ($l['km']>0?round($l['km'],1).'km':'');
+            if(in_array('ville', $cols)) $line[] = $l['ville'];
+            $body .= implode(' | ', array_filter($line)) . "\n";
         }
         mail($to, $subject, $body, "From: noreply@teslamate.local");
         $status_message = "Envoyé à $to"; $status_type = "success";
@@ -114,10 +120,23 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
         echo '<h1>Rapport TeslaMate</h1><p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
         echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
-        echo '<h2>Détail des charges et trajets</h2><table><tr><th>Date</th><th>kWh</th><th>Durée</th><th>km</th><th>Ville</th><th>GPS</th></tr>';
+        echo '<table><tr>';
+        if(in_array('date', $cols)) echo '<th>Date</th>';
+        if(in_array('kwh', $cols)) echo '<th>kWh</th>';
+        if(in_array('duree', $cols)) echo '<th>Durée</th>';
+        if(in_array('km', $cols)) echo '<th>km</th>';
+        if(in_array('ville', $cols)) echo '<th>Ville</th>';
+        if(in_array('gps', $cols)) echo '<th>GPS</th>';
+        echo '</tr>';
         foreach ($historique_fusionne as $l) {
-            $gps = ($l['lat'] != 0) ? round($l['lat'],5).','.round($l['lon'],5) : '-';
-            echo '<tr><td>'.date('d/m/Y', strtotime($l['date'])).'</td><td>'.($l['kwh']>0?round($l['kwh'],2):'').'</td><td>'.round($l['duree']).' min</td><td>'.($l['km']>0?round($l['km'],1):'').'</td><td>'.htmlspecialchars($l['ville']??'').'</td><td>'.$gps.'</td></tr>';
+            echo '<tr>';
+            if(in_array('date', $cols)) echo '<td>'.date('d/m/Y', strtotime($l['date'])).'</td>';
+            if(in_array('kwh', $cols)) echo '<td>'.($l['kwh']>0?round($l['kwh'],2):'').'</td>';
+            if(in_array('duree', $cols)) echo '<td>'.round($l['duree']).' min</td>';
+            if(in_array('km', $cols)) echo '<td>'.($l['km']>0?round($l['km'],1):'').'</td>';
+            if(in_array('ville', $cols)) echo '<td>'.htmlspecialchars($l['ville']).'</td>';
+            if(in_array('gps', $cols)) echo '<td>'.($l['gps'] != '0,0' ? $l['gps'] : '-').'</td>';
+            echo '</tr>';
         }
         echo '</table><br><button onclick="window.print()" style="display:block;margin:auto;padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:5px;cursor:pointer">Imprimer / PDF</button></body></html>';
         exit;
@@ -126,9 +145,19 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     // --- CSV ---
     if (isset($_POST['telecharger_csv'])) {
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="export.csv"');
-        $f = fopen('php://output', 'w'); fputcsv($f, ['Date', 'kWh', 'Durée', 'km', 'Ville', 'GPS'], ';');
+        $f = fopen('php://output', 'w'); 
+        $header = [];
+        foreach($cols as $c) $header[] = strtoupper($c);
+        fputcsv($f, $header, ';');
         foreach($historique_fusionne as $l) {
-            fputcsv($f, [$l['date'], ($l['kwh']?:''), $l['duree'], ($l['km']?:''), $l['ville'], ($l['lat']?$l['lat'].','.$l['lon']:'')], ';');
+            $row = [];
+            if(in_array('date', $cols)) $row[] = $l['date'];
+            if(in_array('kwh', $cols)) $row[] = ($l['kwh']?:'');
+            if(in_array('duree', $cols)) $row[] = $l['duree'];
+            if(in_array('km', $cols)) $row[] = ($l['km']?:'');
+            if(in_array('ville', $cols)) $row[] = $l['ville'];
+            if(in_array('gps', $cols)) $row[] = $l['gps'];
+            fputcsv($f, $row, ';');
         }
         fclose($f); exit;
     }
@@ -147,9 +176,10 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         .back-button svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 2; fill: none; }
         h1 { margin: 10px 0 30px 0; font-size: 28px; text-align: center; color: #dc2626; }
         label { display: block; font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 8px; margin-top: 15px; }
-        input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
-        .checkbox-container { display: flex; align-items: center; margin-top: 20px; background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); }
-        .checkbox-container input { width: auto; margin-right: 10px; }
+        input[type="date"], select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
+        .checkbox-group { background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; display: none; }
+        .checkbox-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
+        .checkbox-item input { margin-right: 12px; width: 18px; height: 18px; }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; margin-top: 20px; }
         .btn-calc { background: #16a34a; }
         .btn-mail { background: #2563eb; }
@@ -160,16 +190,16 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         .result-value { font-weight: bold; color: #4ade80; }
         .alert { padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         .success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        #export_complet:checked ~ .checkbox-group { display: block; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="tesla.php" class="back-button">
-            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
+        <a href="tesla.php" class="back-button"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <h1>Consommation</h1>
         <?php if ($status_message): ?><div class="alert <?php echo $status_type; ?>"><?php echo $status_message; ?></div><?php endif; ?>
-        <form method="POST">
+        
+        <form method="POST" id="mainForm">
             <label>Lieu (Geofence)</label>
             <select name="geofence">
                 <option value="TOUS" <?php if($selected_geo == 'TOUS') echo 'selected'; ?>>-- TOUS LES LIEUX --</option>
@@ -177,15 +207,33 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                     <option value="<?php echo $geo['id']; ?>" <?php if($selected_geo == $geo['id']) echo 'selected'; ?>><?php echo htmlspecialchars($geo['name']); ?></option>
                 <?php endforeach; ?>
             </select>
+            
             <label>Début</label>
             <input type="date" name="date_debut" value="<?php echo $date_debut; ?>" required>
             <label>Fin</label>
             <input type="date" name="date_fin" value="<?php echo $date_fin; ?>" required>
-            <div class="checkbox-container">
+            
+            <div style="margin-top:20px;">
                 <input type="checkbox" id="export_complet" name="export_complet" <?php if($export_complet) echo 'checked'; ?>>
-                <label for="export_complet">Export complet (Détails)</label>
+                <label for="export_complet" style="display:inline; text-transform:none; color:white; font-size:14px; margin-left:10px;">Export complet (Détails)</label>
+                
+                <div class="checkbox-group">
+                    <label class="checkbox-item" style="color:#4ade80; font-weight:bold;">
+                        <input type="checkbox" id="toggleAll" checked> TOUT SÉLECTIONNER
+                    </label>
+                    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">
+                    <?php 
+                    $available_cols = ['date' => 'Date', 'kwh' => 'kWh', 'duree' => 'Durée', 'km' => 'km', 'ville' => 'Ville', 'gps' => 'GPS'];
+                    foreach($available_cols as $id => $label): ?>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="cols[]" value="<?php echo $id; ?>" class="col-check" <?php if(in_array($id, $cols)) echo 'checked'; ?>> <?php echo $label; ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
             </div>
+
             <button type="submit" name="calculer" class="btn btn-calc">VALIDER</button>
+
             <?php if ($resultats['total_km'] > 0 || $resultats['total_kwh'] > 0): ?>
                 <div class="result-box">
                     <div class="result-item"><span>Distance :</span><span class="result-value"><?php echo $resultats['total_km']; ?> km</span></div>
@@ -200,5 +248,25 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
             <?php endif; ?>
         </form>
     </div>
+
+    <script>
+        // Gestion du "Tout sélectionner"
+        const toggleAll = document.getElementById('toggleAll');
+        const checkboxes = document.querySelectorAll('.col-check');
+
+        toggleAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = toggleAll.checked;
+            });
+        });
+
+        // Si on décoche manuellement un item, on décoche "Tout sélectionner"
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                if(!this.checked) toggleAll.checked = false;
+                if(document.querySelectorAll('.col-check:checked').length === checkboxes.length) toggleAll.checked = true;
+            });
+        });
+    </script>
 </body>
 </html>
