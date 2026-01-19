@@ -36,9 +36,8 @@ $stmt_geo = $pdo->query("SELECT id, name FROM geofences ORDER BY name ASC");
 $geofences = $stmt_geo->fetchAll(PDO::FETCH_ASSOC);
 
 // --- 5. LOGIQUE DE CALCUL ---
-$resultats = null;
-$recharges_detail = [];
-$trajets_detail = [];
+$resultats = ['nb' => 0, 'total_kwh' => 0, 'total_km' => 0];
+$historique_fusionne = [];
 $date_debut = $_POST['date_debut'] ?? date('Y-m-01');
 $date_fin = $_POST['date_fin'] ?? date('Y-m-d');
 $selected_geo = $_POST['geofence'] ?? 'TOUS';
@@ -50,56 +49,72 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     try {
         $params = ['debut' => $date_debut, 'fin' => $date_fin];
         
-        // -- A. Filtre Charges --
         $where_charge = " WHERE cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
         if ($selected_geo !== 'TOUS') {
             $where_charge .= " AND cp.geofence_id = :geo_id";
             $params['geo_id'] = $selected_geo;
         }
 
-        // Synthèse charges
-        $sql_charge = "SELECT COUNT(cp.id) as nb, ROUND(SUM(cp.charge_energy_added)::numeric, 2) as total_kwh FROM charging_processes cp" . $where_charge;
-        $stmt = $pdo->prepare($sql_charge);
-        $stmt->execute($params);
-        $resultats = $stmt->fetch(PDO::FETCH_ASSOC);
+        // 1. Récupération des Charges groupées par jour
+        $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon 
+                    FROM charging_processes cp 
+                    LEFT JOIN positions p ON p.id = (SELECT id FROM positions WHERE date >= cp.start_date ORDER BY date ASC LIMIT 1) 
+                    " . $where_charge . " GROUP BY cp.start_date::date";
+        $stmt_rec = $pdo->prepare($sql_rec);
+        $stmt_rec->execute($params);
+        $charges_par_jour = $stmt_rec->fetchAll(PDO::FETCH_ASSOC);
 
-        // Synthèse Kilométrage
-        $sql_km = "SELECT ROUND(SUM(distance)::numeric, 1) as total_km FROM drives WHERE start_date >= :debut AND start_date < (:fin::date + interval '1 day')";
-        $stmt_km = $pdo->prepare($sql_km);
-        $stmt_km->execute(['debut' => $date_debut, 'fin' => $date_fin]);
-        $res_km = $stmt_km->fetch(PDO::FETCH_ASSOC);
-        $resultats['total_km'] = $res_km['total_km'] ?? 0;
+        // 2. Récupération des Trajets groupés par jour
+        $sql_tra = "SELECT start_date::date as date_f, SUM(distance) as km, SUM(EXTRACT(EPOCH FROM (end_date - start_date))/60) as duree 
+                    FROM drives WHERE start_date >= :debut AND start_date < (:fin::date + interval '1 day') AND distance > 0.1 
+                    GROUP BY start_date::date";
+        $stmt_tra = $pdo->prepare($sql_tra);
+        $stmt_tra->execute(['debut' => $date_debut, 'fin' => $date_fin]);
+        $trajets_par_jour = $stmt_tra->fetchAll(PDO::FETCH_ASSOC);
 
-        // -- B. Détails (Si export coché) --
-        if ($export_complet) {
-            // Détails RECHARGES (avec GPS)
-            $sql_recharges = "SELECT cp.start_date::date as date_charge, TO_CHAR(cp.start_date, 'HH24:MI') as heure_charge, p.latitude, p.longitude, ROUND(cp.charge_energy_added::numeric, 2) as kwh, ROUND(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree_minutes FROM charging_processes cp LEFT JOIN positions p ON p.id = (SELECT id FROM positions WHERE date >= cp.start_date ORDER BY date ASC LIMIT 1)" . $where_charge . " ORDER BY cp.start_date ASC";
-            $stmt_rec = $pdo->prepare($sql_recharges);
-            $stmt_rec->execute($params);
-            $recharges_detail = $stmt_rec->fetchAll(PDO::FETCH_ASSOC);
+        // 3. Fusion et Calcul des totaux réels (Jour par jour)
+        $temp_hist = [];
+        $total_kwh_accumule = 0;
+        $total_km_accumule = 0;
+        $compteur_jours_charge = 0;
 
-            // Détails TRAJETS (avec Adresses corrigées)
-            $sql_trajets = "SELECT d.start_date, d.end_date, ROUND(d.distance::numeric, 1) as km, a1.name as start_address FROM drives d LEFT JOIN addresses a1 ON d.start_address_id = a1.id WHERE d.start_date >= :debut AND d.start_date < (:fin::date + interval '1 day') AND d.distance > 0.1 ORDER BY d.start_date ASC";
-            $stmt_trajets = $pdo->prepare($sql_trajets);
-            $stmt_trajets->execute(['debut' => $date_debut, 'fin' => $date_fin]);
-            $trajets_detail = $stmt_trajets->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($charges_par_jour as $c) {
+            $d = $c['date_f'];
+            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'km' => 0, 'duree' => $c['duree'], 'lat' => $c['lat'], 'lon' => $c['lon']];
+            $total_kwh_accumule += $c['kwh'];
+            if ($c['kwh'] > 0) $compteur_jours_charge++; 
         }
 
+        foreach ($trajets_par_jour as $t) {
+            $d = $t['date_f'];
+            if (!isset($temp_hist[$d])) {
+                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'km' => $t['km'], 'duree' => $t['duree'], 'lat' => 0, 'lon' => 0];
+            } else {
+                $temp_hist[$d]['km'] += $t['km'];
+                $temp_hist[$d]['duree'] += $t['duree'];
+            }
+            $total_km_accumule += $t['km'];
+        }
+
+        ksort($temp_hist);
+        $historique_fusionne = $temp_hist;
+        
+        // Mise à jour des résultats globaux
+        $resultats['nb'] = $compteur_jours_charge;
+        $resultats['total_kwh'] = round($total_kwh_accumule, 2);
+        $resultats['total_km'] = round($total_km_accumule, 1);
+
     } catch (Exception $e) {
-        die("Erreur lors du calcul : " . $e->getMessage());
+        die("Erreur : " . $e->getMessage());
     }
 
     // --- ENVOI EMAIL ---
     if (isset($_POST['envoyer_email']) && !empty($config['NOTIFICATION_EMAIL'])) {
         $to = $config['NOTIFICATION_EMAIL'];
         $subject = "Rapport TeslaMate - $date_debut au $date_fin";
-        $body = "Distance : " . $resultats['total_km'] . " km\nCharges : " . $resultats['nb'] . "\nEnergie : " . ($resultats['total_kwh'] ?? 0) . " kWh\n";
-        
-        if ($export_complet) {
-            $body .= "\n=== DETAILS RECHARGES ===\n";
-            foreach ($recharges_detail as $r) {
-                $body .= $r['date_charge'] . " " . $r['heure_charge'] . " | " . $r['kwh'] . " kWh | GPS: " . round($r['latitude'],4) . "," . round($r['longitude'],4) . "\n";
-            }
+        $body = "Distance : " . $resultats['total_km'] . " km | Energie : " . $resultats['total_kwh'] . " kWh | Charges : " . $resultats['nb'] . "\n";
+        foreach ($historique_fusionne as $l) {
+            $body .= $l['date'] . " | " . ($l['kwh'] > 0 ? round($l['kwh'],2)."kWh " : "") . ($l['km'] > 0 ? round($l['km'],1)."km" : "") . "\n";
         }
         mail($to, $subject, $body, "From: noreply@teslamate.local");
         $status_message = "Envoyé à $to"; $status_type = "success";
@@ -107,39 +122,24 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
     // --- PDF / PRINT ---
     if (isset($_POST['telecharger_pdf'])) {
-        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:8px;font-size:12px} th{background:#dc2626;color:#fff}</style></head><body>';
-        echo '<h1>Rapport TeslaMate</h1><p>Période : '.$date_debut.' au '.$date_fin.'</p>';
-        echo '<ul><li>Distance : '.$resultats['total_km'].' km</li><li>Charges : '.$resultats['nb'].'</li><li>Energie : '.$resultats['total_kwh'].' kWh</li></ul>';
-        
-        if ($export_complet) {
-            echo '<h2>Détail des recharges</h2><table><tr><th>Date</th><th>Heure</th><th>kWh</th><th>Durée</th><th>GPS</th></tr>';
-            foreach ($recharges_detail as $r) {
-                echo '<tr><td>'.$r['date_charge'].'</td><td>'.$r['heure_charge'].'</td><td>'.$r['kwh'].'</td><td>'.floor($r['duree_minutes']/60).'h'.($r['duree_minutes']%60).'m</td><td>'.round($r['latitude'],6).','.round($r['longitude'],6).'</td></tr>';
-            }
-            echo '</table>';
-
-            echo '<h2>Détail des trajets</h2><table><tr><th>Départ</th><th>Km</th><th>Adresse</th></tr>';
-            foreach ($trajets_detail as $t) {
-                echo '<tr><td>'.date('d/m H:i', strtotime($t['start_date'])).'</td><td>'.$t['km'].'</td><td>'.htmlspecialchars($t['start_address'] ?? 'Inconnu').'</td></tr>';
-            }
-            echo '</table>';
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
+        echo '<h1>Rapport TeslaMate</h1><p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
+        echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
+        echo '<h2>Détail des charges et trajets</h2><table><tr><th>Date</th><th>kWh</th><th>Durée</th><th>km</th><th>GPS</th></tr>';
+        foreach ($historique_fusionne as $l) {
+            $gps = ($l['lat'] != 0) ? round($l['lat'],5).','.round($l['lon'],5) : '';
+            echo '<tr><td>'.date('d/m/Y', strtotime($l['date'])).'</td><td>'.($l['kwh'] > 0 ? round($l['kwh'],2) : '').'</td><td>'.round($l['duree']).' min</td><td>'.($l['km'] > 0 ? round($l['km'],1) : '').'</td><td>'.$gps.'</td></tr>';
         }
-        echo '<br><button onclick="window.print()">Imprimer</button></body></html>';
+        echo '</table><br><button onclick="window.print()" style="display:block;margin:auto;padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:5px;cursor:pointer">Imprimer / PDF</button></body></html>';
         exit;
     }
 
     // --- CSV ---
     if (isset($_POST['telecharger_csv'])) {
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="export_tesla.csv"');
-        $f = fopen('php://output', 'w');
-        fputcsv($f, ['SECTION', 'DATE', 'VALEUR 1', 'VALEUR 2', 'INFO'], ';');
-        fputcsv($f, ['SYNTHESE', $date_debut, $resultats['total_km'].' km', $resultats['nb'].' charges', $resultats['total_kwh'].' kWh'], ';');
-        if($export_complet) {
-            fputcsv($f, ['--- RECHARGES ---'], ';');
-            foreach($recharges_detail as $r) fputcsv($f, ['RECHARGE', $r['date_charge'], $r['kwh'].' kWh', $r['heure_charge'], $r['latitude'].','.$r['longitude']], ';');
-            fputcsv($f, ['--- TRAJETS ---'], ';');
-            foreach($trajets_detail as $t) fputcsv($f, ['TRAJET', $t['start_date'], $t['km'].' km', '', $t['start_address']], ';');
+        header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="export.csv"');
+        $f = fopen('php://output', 'w'); fputcsv($f, ['Date', 'kWh', 'Duree', 'km', 'GPS'], ';');
+        foreach($historique_fusionne as $l) {
+            fputcsv($f, [$l['date'], ($l['kwh']?:''), $l['duree'], ($l['km']?:''), ($l['lat']?$l['lat'].','.$l['lon']:'')], ';');
         }
         fclose($f); exit;
     }
@@ -197,11 +197,11 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                 <label for="export_complet">Export complet (Détails)</label>
             </div>
             <button type="submit" name="calculer" class="btn btn-calc">VALIDER</button>
-            <?php if ($resultats): ?>
+            <?php if ($resultats['total_km'] > 0 || $resultats['total_kwh'] > 0): ?>
                 <div class="result-box">
                     <div class="result-item"><span>Distance :</span><span class="result-value"><?php echo $resultats['total_km']; ?> km</span></div>
                     <div class="result-item"><span>Charges :</span><span class="result-value"><?php echo $resultats['nb']; ?></span></div>
-                    <div class="result-item"><span>Énergie :</span><span class="result-value"><?php echo $resultats['total_kwh'] ?? 0; ?> kWh</span></div>
+                    <div class="result-item"><span>Énergie :</span><span class="result-value"><?php echo $resultats['total_kwh']; ?> kWh</span></div>
                 </div>
                 <?php if (!empty($config['NOTIFICATION_EMAIL'])): ?>
                     <button type="submit" name="envoyer_email" class="btn btn-mail">ENVOI PAR EMAIL</button>
