@@ -48,23 +48,23 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     
     try {
         $params = ['debut' => $date_debut, 'fin' => $date_fin];
-        
         $where_charge = " WHERE cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
         if ($selected_geo !== 'TOUS') {
             $where_charge .= " AND cp.geofence_id = :geo_id";
             $params['geo_id'] = $selected_geo;
         }
 
-        // 1. Récupération des Charges groupées par jour
-        $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon 
+        // 1. Charges par jour + Ville
+        $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon, MAX(a.city) as ville
                     FROM charging_processes cp 
-                    LEFT JOIN positions p ON p.id = (SELECT id FROM positions WHERE date >= cp.start_date ORDER BY date ASC LIMIT 1) 
+                    LEFT JOIN addresses a ON a.id = cp.address_id
+                    LEFT JOIN positions p ON p.id = a.id
                     " . $where_charge . " GROUP BY cp.start_date::date";
         $stmt_rec = $pdo->prepare($sql_rec);
         $stmt_rec->execute($params);
         $charges_par_jour = $stmt_rec->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Récupération des Trajets groupés par jour
+        // 2. Trajets par jour
         $sql_tra = "SELECT start_date::date as date_f, SUM(distance) as km, SUM(EXTRACT(EPOCH FROM (end_date - start_date))/60) as duree 
                     FROM drives WHERE start_date >= :debut AND start_date < (:fin::date + interval '1 day') AND distance > 0.1 
                     GROUP BY start_date::date";
@@ -72,49 +72,38 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $stmt_tra->execute(['debut' => $date_debut, 'fin' => $date_fin]);
         $trajets_par_jour = $stmt_tra->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Fusion et Calcul des totaux réels (Jour par jour)
+        // 3. Fusion et totaux
         $temp_hist = [];
-        $total_kwh_accumule = 0;
-        $total_km_accumule = 0;
-        $compteur_jours_charge = 0;
+        $total_kwh_accumule = 0; $total_km_accumule = 0; $compteur_jours_charge = 0;
 
         foreach ($charges_par_jour as $c) {
             $d = $c['date_f'];
-            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'km' => 0, 'duree' => $c['duree'], 'lat' => $c['lat'], 'lon' => $c['lon']];
+            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'km' => 0, 'duree' => $c['duree'], 'lat' => $c['lat'], 'lon' => $c['lon'], 'ville' => $c['ville']];
             $total_kwh_accumule += $c['kwh'];
-            if ($c['kwh'] > 0) $compteur_jours_charge++; 
+            if ($c['kwh'] > 0) $compteur_jours_charge++;
         }
-
         foreach ($trajets_par_jour as $t) {
             $d = $t['date_f'];
             if (!isset($temp_hist[$d])) {
-                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'km' => $t['km'], 'duree' => $t['duree'], 'lat' => 0, 'lon' => 0];
+                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'km' => $t['km'], 'duree' => $t['duree'], 'lat' => 0, 'lon' => 0, 'ville' => ''];
             } else {
                 $temp_hist[$d]['km'] += $t['km'];
                 $temp_hist[$d]['duree'] += $t['duree'];
             }
             $total_km_accumule += $t['km'];
         }
-
         ksort($temp_hist);
         $historique_fusionne = $temp_hist;
-        
-        // Mise à jour des résultats globaux
-        $resultats['nb'] = $compteur_jours_charge;
-        $resultats['total_kwh'] = round($total_kwh_accumule, 2);
-        $resultats['total_km'] = round($total_km_accumule, 1);
+        $resultats = ['nb' => $compteur_jours_charge, 'total_kwh' => round($total_kwh_accumule, 2), 'total_km' => round($total_km_accumule, 1)];
 
-    } catch (Exception $e) {
-        die("Erreur : " . $e->getMessage());
-    }
+    } catch (Exception $e) { die("Erreur : " . $e->getMessage()); }
 
     // --- ENVOI EMAIL ---
     if (isset($_POST['envoyer_email']) && !empty($config['NOTIFICATION_EMAIL'])) {
-        $to = $config['NOTIFICATION_EMAIL'];
-        $subject = "Rapport TeslaMate - $date_debut au $date_fin";
-        $body = "Distance : " . $resultats['total_km'] . " km | Energie : " . $resultats['total_kwh'] . " kWh | Charges : " . $resultats['nb'] . "\n";
+        $to = $config['NOTIFICATION_EMAIL']; $subject = "Rapport TeslaMate - $date_debut au $date_fin";
+        $body = "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
         foreach ($historique_fusionne as $l) {
-            $body .= $l['date'] . " | " . ($l['kwh'] > 0 ? round($l['kwh'],2)."kWh " : "") . ($l['km'] > 0 ? round($l['km'],1)."km" : "") . "\n";
+            $body .= date('d/m/Y', strtotime($l['date']))." | ".($l['ville']?:'-')." | ".($l['kwh']>0?round($l['kwh'],2).'kWh':'')." | ".($l['km']>0?round($l['km'],1).'km':'')."\n";
         }
         mail($to, $subject, $body, "From: noreply@teslamate.local");
         $status_message = "Envoyé à $to"; $status_type = "success";
@@ -125,10 +114,10 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
         echo '<h1>Rapport TeslaMate</h1><p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
         echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
-        echo '<h2>Détail des charges et trajets</h2><table><tr><th>Date</th><th>kWh</th><th>Durée</th><th>km</th><th>GPS</th></tr>';
+        echo '<h2>Détail des charges et trajets</h2><table><tr><th>Date</th><th>kWh</th><th>Durée</th><th>km</th><th>Ville</th><th>GPS</th></tr>';
         foreach ($historique_fusionne as $l) {
-            $gps = ($l['lat'] != 0) ? round($l['lat'],5).','.round($l['lon'],5) : '';
-            echo '<tr><td>'.date('d/m/Y', strtotime($l['date'])).'</td><td>'.($l['kwh'] > 0 ? round($l['kwh'],2) : '').'</td><td>'.round($l['duree']).' min</td><td>'.($l['km'] > 0 ? round($l['km'],1) : '').'</td><td>'.$gps.'</td></tr>';
+            $gps = ($l['lat'] != 0) ? round($l['lat'],5).','.round($l['lon'],5) : '-';
+            echo '<tr><td>'.date('d/m/Y', strtotime($l['date'])).'</td><td>'.($l['kwh']>0?round($l['kwh'],2):'').'</td><td>'.round($l['duree']).' min</td><td>'.($l['km']>0?round($l['km'],1):'').'</td><td>'.htmlspecialchars($l['ville']??'').'</td><td>'.$gps.'</td></tr>';
         }
         echo '</table><br><button onclick="window.print()" style="display:block;margin:auto;padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:5px;cursor:pointer">Imprimer / PDF</button></body></html>';
         exit;
@@ -137,9 +126,9 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     // --- CSV ---
     if (isset($_POST['telecharger_csv'])) {
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="export.csv"');
-        $f = fopen('php://output', 'w'); fputcsv($f, ['Date', 'kWh', 'Duree', 'km', 'GPS'], ';');
+        $f = fopen('php://output', 'w'); fputcsv($f, ['Date', 'kWh', 'Durée', 'km', 'Ville', 'GPS'], ';');
         foreach($historique_fusionne as $l) {
-            fputcsv($f, [$l['date'], ($l['kwh']?:''), $l['duree'], ($l['km']?:''), ($l['lat']?$l['lat'].','.$l['lon']:'')], ';');
+            fputcsv($f, [$l['date'], ($l['kwh']?:''), $l['duree'], ($l['km']?:''), $l['ville'], ($l['lat']?$l['lat'].','.$l['lon']:'')], ';');
         }
         fclose($f); exit;
     }
