@@ -31,7 +31,10 @@ try {
     die("Erreur de connexion : " . $e->getMessage());
 }
 
-// --- 4. RÉCUPÉRATION GEOFENCES ---
+// --- 4. RÉCUPÉRATION DES VÉHICULES ET GEOFENCES ---
+$stmt_cars = $pdo->query("SELECT id, COALESCE(name, model) as display_name FROM cars ORDER BY id ASC");
+$cars = $stmt_cars->fetchAll(PDO::FETCH_ASSOC);
+
 $stmt_geo = $pdo->query("SELECT id, name FROM geofences ORDER BY name ASC");
 $geofences = $stmt_geo->fetchAll(PDO::FETCH_ASSOC);
 
@@ -40,22 +43,32 @@ $resultats = ['nb' => 0, 'total_kwh' => 0, 'total_km' => 0];
 $historique_fusionne = [];
 $date_debut = $_POST['date_debut'] ?? date('Y-m-01');
 $date_fin = $_POST['date_fin'] ?? date('Y-m-d');
+$selected_car = $_POST['car_id'] ?? ($cars[0]['id'] ?? 1);
 $selected_geo = $_POST['geofence'] ?? 'TOUS';
 $export_complet = isset($_POST['export_complet']) ? 1 : 0;
-$cols = $_POST['cols'] ?? ['date', 'kwh', 'duree', 'km', 'ville', 'gps']; // Colonnes par défaut
+$cols = $_POST['cols'] ?? ['date', 'kwh', 'duree', 'km', 'ville', 'gps'];
 $status_message = ""; $status_type = "";
+
+// Trouver le nom du véhicule sélectionné pour les titres
+$car_name_display = "Véhicule inconnu";
+foreach ($cars as $car) {
+    if ($car['id'] == $selected_car) {
+        $car_name_display = $car['display_name'];
+        break;
+    }
+}
 
 if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST['telecharger_pdf']) || isset($_POST['telecharger_csv'])) {
     
     try {
-        $params = ['debut' => $date_debut, 'fin' => $date_fin];
-        $where_charge = " WHERE cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
+        $params = ['debut' => $date_debut, 'fin' => $date_fin, 'car_id' => $selected_car];
+        
+        $where_charge = " WHERE cp.car_id = :car_id AND cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
         if ($selected_geo !== 'TOUS') {
             $where_charge .= " AND cp.geofence_id = :geo_id";
             $params['geo_id'] = $selected_geo;
         }
 
-        // 1. Charges par jour + Ville
         $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon, MAX(a.city) as ville
                     FROM charging_processes cp 
                     LEFT JOIN addresses a ON a.id = cp.address_id
@@ -65,15 +78,13 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $stmt_rec->execute($params);
         $charges_par_jour = $stmt_rec->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Trajets par jour
         $sql_tra = "SELECT start_date::date as date_f, SUM(distance) as km, SUM(EXTRACT(EPOCH FROM (end_date - start_date))/60) as duree 
-                    FROM drives WHERE start_date >= :debut AND start_date < (:fin::date + interval '1 day') AND distance > 0.1 
+                    FROM drives WHERE car_id = :car_id AND start_date >= :debut AND start_date < (:fin::date + interval '1 day') AND distance > 0.1 
                     GROUP BY start_date::date";
         $stmt_tra = $pdo->prepare($sql_tra);
-        $stmt_tra->execute(['debut' => $date_debut, 'fin' => $date_fin]);
+        $stmt_tra->execute(['car_id' => $selected_car, 'debut' => $date_debut, 'fin' => $date_fin]);
         $trajets_par_jour = $stmt_tra->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Fusion et totaux
         $temp_hist = [];
         $total_kwh_accumule = 0; $total_km_accumule = 0; $compteur_jours_charge = 0;
 
@@ -101,8 +112,10 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
     // --- ENVOI EMAIL ---
     if (isset($_POST['envoyer_email']) && !empty($config['NOTIFICATION_EMAIL'])) {
-        $to = $config['NOTIFICATION_EMAIL']; $subject = "Rapport TeslaMate - $date_debut au $date_fin";
-        $body = "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
+        $to = $config['NOTIFICATION_EMAIL']; 
+        $subject = "Rapport TeslaMate - $car_name_display - $date_debut au $date_fin";
+        $body = "Véhicule : $car_name_display\n";
+        $body .= "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
         foreach ($historique_fusionne as $l) {
             $line = [];
             if(in_array('date', $cols)) $line[] = date('d/m/Y', strtotime($l['date']));
@@ -118,15 +131,14 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     // --- PDF / PRINT ---
     if (isset($_POST['telecharger_pdf'])) {
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
-        echo '<h1>Rapport TeslaMate</h1><p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
+        echo '<h1>Rapport TeslaMate - '.htmlspecialchars($car_name_display).'</h1>';
+        echo '<p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
         echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
         echo '<table><tr>';
-        if(in_array('date', $cols)) echo '<th>Date</th>';
-        if(in_array('kwh', $cols)) echo '<th>kWh</th>';
-        if(in_array('duree', $cols)) echo '<th>Durée</th>';
-        if(in_array('km', $cols)) echo '<th>km</th>';
-        if(in_array('ville', $cols)) echo '<th>Ville</th>';
-        if(in_array('gps', $cols)) echo '<th>GPS</th>';
+        foreach($cols as $c) {
+            $labels = ['date'=>'Date','kwh'=>'kWh','duree'=>'Durée','km'=>'km','ville'=>'Ville','gps'=>'GPS'];
+            echo "<th>".$labels[$c]."</th>";
+        }
         echo '</tr>';
         foreach ($historique_fusionne as $l) {
             echo '<tr>';
@@ -146,17 +158,10 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     if (isset($_POST['telecharger_csv'])) {
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="export.csv"');
         $f = fopen('php://output', 'w'); 
-        $header = [];
-        foreach($cols as $c) $header[] = strtoupper($c);
-        fputcsv($f, $header, ';');
+        fputcsv($f, array_map('strtoupper', $cols), ';');
         foreach($historique_fusionne as $l) {
             $row = [];
-            if(in_array('date', $cols)) $row[] = $l['date'];
-            if(in_array('kwh', $cols)) $row[] = ($l['kwh']?:'');
-            if(in_array('duree', $cols)) $row[] = $l['duree'];
-            if(in_array('km', $cols)) $row[] = ($l['km']?:'');
-            if(in_array('ville', $cols)) $row[] = $l['ville'];
-            if(in_array('gps', $cols)) $row[] = $l['gps'];
+            foreach($cols as $c) $row[] = $l[$c] ?? '';
             fputcsv($f, $row, ';');
         }
         fclose($f); exit;
@@ -189,7 +194,6 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         .result-item { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 18px; }
         .result-value { font-weight: bold; color: #4ade80; }
         .alert { padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
-        .success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         #export_complet:checked ~ .checkbox-group { display: block; }
     </style>
 </head>
@@ -197,9 +201,16 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     <div class="container">
         <a href="tesla.php" class="back-button"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <h1>Consommation</h1>
-        <?php if ($status_message): ?><div class="alert <?php echo $status_type; ?>"><?php echo $status_message; ?></div><?php endif; ?>
+        <?php if ($status_message): ?><div class="alert success"><?php echo $status_message; ?></div><?php endif; ?>
         
-        <form method="POST" id="mainForm">
+        <form method="POST">
+            <label>Véhicule</label>
+            <select name="car_id">
+                <?php foreach ($cars as $car): ?>
+                    <option value="<?php echo $car['id']; ?>" <?php if($selected_car == $car['id']) echo 'selected'; ?>><?php echo htmlspecialchars($car['display_name']); ?></option>
+                <?php endforeach; ?>
+            </select>
+
             <label>Lieu (Geofence)</label>
             <select name="geofence">
                 <option value="TOUS" <?php if($selected_geo == 'TOUS') echo 'selected'; ?>>-- TOUS LES LIEUX --</option>
@@ -250,17 +261,11 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     </div>
 
     <script>
-        // Gestion du "Tout sélectionner"
         const toggleAll = document.getElementById('toggleAll');
         const checkboxes = document.querySelectorAll('.col-check');
-
         toggleAll.addEventListener('change', function() {
-            checkboxes.forEach(cb => {
-                cb.checked = toggleAll.checked;
-            });
+            checkboxes.forEach(cb => { cb.checked = toggleAll.checked; });
         });
-
-        // Si on décoche manuellement un item, on décoche "Tout sélectionner"
         checkboxes.forEach(cb => {
             cb.addEventListener('change', function() {
                 if(!this.checked) toggleAll.checked = false;
