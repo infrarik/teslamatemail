@@ -1,5 +1,5 @@
 <?php
-// --- 1. LECTURE DU SETUP multi vehicules ---
+// --- 1. LECTURE DU SETUP ---
 $file = 'cgi-bin/setup';
 $config = ['NOTIFICATION_EMAIL' => '', 'DOCKER_PATH' => ''];
 
@@ -49,19 +49,26 @@ $export_complet = isset($_POST['export_complet']) ? 1 : 0;
 $cols = $_POST['cols'] ?? ['date', 'kwh', 'duree', 'km', 'ville', 'gps'];
 $status_message = ""; $status_type = "";
 
+// Trouver le nom du véhicule sélectionné pour les titres
+$car_name_display = "Véhicule inconnu";
+foreach ($cars as $car) {
+    if ($car['id'] == $selected_car) {
+        $car_name_display = $car['display_name'];
+        break;
+    }
+}
+
 if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST['telecharger_pdf']) || isset($_POST['telecharger_csv'])) {
     
     try {
         $params = ['debut' => $date_debut, 'fin' => $date_fin, 'car_id' => $selected_car];
         
-        // Filtre SQL pour les charges
         $where_charge = " WHERE cp.car_id = :car_id AND cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
         if ($selected_geo !== 'TOUS') {
             $where_charge .= " AND cp.geofence_id = :geo_id";
             $params['geo_id'] = $selected_geo;
         }
 
-        // 1. Charges par jour + Ville
         $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon, MAX(a.city) as ville
                     FROM charging_processes cp 
                     LEFT JOIN addresses a ON a.id = cp.address_id
@@ -71,7 +78,6 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $stmt_rec->execute($params);
         $charges_par_jour = $stmt_rec->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Trajets par jour (filtrés par voiture)
         $sql_tra = "SELECT start_date::date as date_f, SUM(distance) as km, SUM(EXTRACT(EPOCH FROM (end_date - start_date))/60) as duree 
                     FROM drives WHERE car_id = :car_id AND start_date >= :debut AND start_date < (:fin::date + interval '1 day') AND distance > 0.1 
                     GROUP BY start_date::date";
@@ -79,7 +85,6 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $stmt_tra->execute(['car_id' => $selected_car, 'debut' => $date_debut, 'fin' => $date_fin]);
         $trajets_par_jour = $stmt_tra->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Fusion et totaux
         $temp_hist = [];
         $total_kwh_accumule = 0; $total_km_accumule = 0; $compteur_jours_charge = 0;
 
@@ -107,8 +112,10 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
     // --- ENVOI EMAIL ---
     if (isset($_POST['envoyer_email']) && !empty($config['NOTIFICATION_EMAIL'])) {
-        $to = $config['NOTIFICATION_EMAIL']; $subject = "Rapport TeslaMate - $date_debut au $date_fin";
-        $body = "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
+        $to = $config['NOTIFICATION_EMAIL']; 
+        $subject = "Rapport TeslaMate - $car_name_display - $date_debut au $date_fin";
+        $body = "Véhicule : $car_name_display\n";
+        $body .= "Distance : ".$resultats['total_km']." km | Energie : ".$resultats['total_kwh']." kWh | Charges : ".$resultats['nb']."\n\nDétail :\n";
         foreach ($historique_fusionne as $l) {
             $line = [];
             if(in_array('date', $cols)) $line[] = date('d/m/Y', strtotime($l['date']));
@@ -124,7 +131,8 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
     // --- PDF / PRINT ---
     if (isset($_POST['telecharger_pdf'])) {
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
-        echo '<h1>Rapport TeslaMate</h1><p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
+        echo '<h1>Rapport TeslaMate - '.htmlspecialchars($car_name_display).'</h1>';
+        echo '<p style="text-align:center">Période : '.$date_debut.' au '.$date_fin.'</p>';
         echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
         echo '<table><tr>';
         foreach($cols as $c) {
