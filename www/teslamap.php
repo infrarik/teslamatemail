@@ -89,7 +89,7 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>TeslaMap Historique</title>
+    <title>Historique</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { font-family: -apple-system, sans-serif; background: #111; color: #eee; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -142,7 +142,7 @@ try {
             <a href="tesla.php" class="back-button">
                 <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </a>
-            <h1 style="margin:0; font-size:18px; color:#dc2626;">TeslaMap Historique</h1>
+            <h1 style="margin:0; font-size:18px; color:#dc2626;">Historique</h1>
         </div>
 
         <label>Véhicule</label>

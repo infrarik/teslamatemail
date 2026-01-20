@@ -93,7 +93,7 @@ try {
             <div class="max-w-2xl mx-auto flex flex-col items-center space-y-4">
               <div class="text-center py-1">
                 <h1 class="text-2xl font-bold text-white tracking-tight">${carName}</h1>
-                <h2 class="text-xl font-bold text-red-600">TeslaMate</h2>
+                <h2 class="text-xl font-bold text-red-600">TeslaMate Mail</h2>
               </div>
               <div class="w-full flex items-center justify-between">
                 <div class="w-10"></div>
@@ -162,21 +162,21 @@ try {
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-full bg-gray-700/50"></div>
                 <div class="space-y-6">
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 font-black uppercase">Avant Gauche</p>
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Avant Gauche</p>
                     <p class="text-3xl font-bold ${carData.tpms_pressure_fl < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_fl || 0).toFixed(1)}</p>
                   </div>
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 font-black uppercase">Arrière Gauche</p>
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Arrière Gauche</p>
                     <p class="text-3xl font-bold ${carData.tpms_pressure_rl < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_rl || 0).toFixed(1)}</p>
                   </div>
                 </div>
                 <div class="space-y-6">
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 font-black uppercase">Avant Droit</p>
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Avant Droit</p>
                     <p class="text-3xl font-bold ${carData.tpms_pressure_fr < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_fr || 0).toFixed(1)}</p>
                   </div>
                   <div class="text-center">
-                    <p class="text-[10px] text-gray-500 font-black uppercase">Arrière Droit</p>
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Arrière Droit</p>
                     <p class="text-3xl font-bold ${carData.tpms_pressure_rr < 2.6 ? 'text-red-500 animate-pulse-soft' : 'text-white'}">${parseFloat(carData.tpms_pressure_rr || 0).toFixed(1)}</p>
                   </div>
                 </div>
@@ -184,7 +184,7 @@ try {
             </div>
 
             <div class="bg-blue-600/20 rounded-2xl p-5 border border-blue-500/30 text-center shadow-xl">
-                <p class="text-sm font-bold text-blue-400 uppercase mb-1">Dernière charge terminée</p>
+                <p class="text-sm font-bold text-blue-400 uppercase mb-1">Dernière charge</p>
                 <p class="text-4xl font-black text-white">${PHP_LAST_CHARGE} <span class="text-xl font-normal text-blue-300">kWh ajoutés</span></p>
             </div>
             
