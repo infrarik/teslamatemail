@@ -22,15 +22,28 @@ pourra être envoyée.
 * Placez le script 'install.sh' et l'archive 'files.zip'
   dans le même répertoire sur votre serveur.
 
-2. EXÉCUTION DE L'INSTALLATION
-------------------------------
-Lancez le script en tant que root :
+2. EXÉCUTION DE L'INSTALLATION (PREMIÈRE FOIS)
+----------------------------------------------
+Lancez le script complet en tant que root :
 
    sudo bash install.sh
 
-3. ÉTAPES DU SCRIPT
--------------------
-Le script automatisera les actions suivantes :
+3. MISES À JOUR (INSTALLATION WEB UNIQUEMENT)
+---------------------------------------------
+Si vous souhaitez uniquement mettre à jour les fichiers de
+l'interface web ou les scripts sans refaire toute la
+configuration système (SMTP/Cron/Docker) :
+
+   1. Chargez le nouveau 'files.zip' dans le dossier /root.
+   2. Lancez le script de mise à jour :
+      sudo bash installweb.sh
+
+L'intégralité des fichiers contenus dans l'archive sera
+immédiatement déployée vers /var/www/html et /root.
+
+4. ÉTAPES DU SCRIPT COMPLET
+---------------------------
+Le script 'install.sh' automatisera les actions suivantes :
    a. Installation des paquets (Apache, PHP, Postfix, etc.).
    b. Configuration de votre serveur SMTP (avec double
       vérification du mot de passe).
@@ -41,7 +54,7 @@ Le script automatisera les actions suivantes :
       (suppression des commentaires).
    f. Ajout de la tâche Cron pour un scan toutes les 5 min.
 
-4. VÉRIFICATION D'INSTALLATION
+5. VÉRIFICATION D'INSTALLATION
 ------------------------------
 À la fin du script, un récapitulatif s'affichera.
 Vérifiez bien que :
@@ -49,7 +62,7 @@ Vérifiez bien que :
   est correct.
 * L'URL fournie (http://[IP]/tesla.php) est accessible.
 
-5. MAINTENANCE & LOGS
+6. MAINTENANCE & LOGS
 ---------------------
 * Logs du script de charge : /var/log/teslacharge.log
 * Logs email : /var/log/mail.log
