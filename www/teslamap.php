@@ -26,7 +26,7 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
 }
 
 // --- 3. RÉCUPÉRATION DES DONNÉES ---
-$error_message = ""; $trajets = []; $positions = [];
+$error_message = ""; $trajets = []; $positions = []; $cars = [];
 $selected_date = $_GET['date'] ?? date('Y-m-d');
 $selected_drive_id = $_GET['drive_id'] ?? null;
 $total_km = 0; $total_kwh = 0;
@@ -37,36 +37,47 @@ try {
     $pdo->exec("SET TIME ZONE 'Europe/Paris'");
     date_default_timezone_set('Europe/Paris');
 
-    // 3a. Requête des Trajets
-    $sql_trajets = "SELECT d.id, 
-                           (d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') as start_date_local, 
-                           ROUND(d.distance::numeric, 1) as km,
-                           a_e.display_name as end_point
-                    FROM drives d
-                    LEFT JOIN addresses a_e ON d.end_address_id = a_e.id
-                    WHERE DATE(d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date
-                    ORDER BY d.start_date DESC";
+    // 3a. Récupération des véhicules
+    $stmt_cars = $pdo->query("SELECT id, COALESCE(name, model) as display_name FROM cars ORDER BY id ASC");
+    $cars = $stmt_cars->fetchAll(PDO::FETCH_ASSOC);
     
-    $stmt = $pdo->prepare($sql_trajets);
-    $stmt->execute(['date' => $selected_date]);
-    $trajets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Déterminer le véhicule sélectionné (par défaut le premier)
+    $selected_car_id = $_GET['car_id'] ?? ($cars[0]['id'] ?? null);
 
-    foreach ($trajets as $t) $total_km += $t['km'];
+    if ($selected_car_id) {
+        // 3b. Requête des Trajets filtrée par voiture
+        $sql_trajets = "SELECT d.id, 
+                               (d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') as start_date_local, 
+                               ROUND(d.distance::numeric, 1) as km,
+                               a_e.display_name as end_point
+                        FROM drives d
+                        LEFT JOIN addresses a_e ON d.end_address_id = a_e.id
+                        WHERE d.car_id = :car_id 
+                        AND DATE(d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date
+                        ORDER BY d.start_date DESC";
+        
+        $stmt = $pdo->prepare($sql_trajets);
+        $stmt->execute(['car_id' => $selected_car_id, 'date' => $selected_date]);
+        $trajets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3b. Requête des Charges
-    $sql_charge = "SELECT SUM(charge_energy_added) as kwh 
-                   FROM charging_processes 
-                   WHERE DATE(end_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date";
-    
-    $stmt_c = $pdo->prepare($sql_charge);
-    $stmt_c->execute(['date' => $selected_date]);
-    $total_kwh = round((float)($stmt_c->fetchColumn() ?? 0), 1);
+        foreach ($trajets as $t) $total_km += $t['km'];
 
-    // 3c. Positions GPS pour la carte
-    if ($selected_drive_id) {
-        $stmt_p = $pdo->prepare("SELECT latitude, longitude, speed FROM positions WHERE drive_id = ? AND latitude IS NOT NULL ORDER BY date ASC");
-        $stmt_p->execute([$selected_drive_id]);
-        $positions = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
+        // 3c. Requête des Charges filtrée par voiture
+        $sql_charge = "SELECT SUM(charge_energy_added) as kwh 
+                       FROM charging_processes 
+                       WHERE car_id = :car_id 
+                       AND DATE(end_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = :date";
+        
+        $stmt_c = $pdo->prepare($sql_charge);
+        $stmt_c->execute(['car_id' => $selected_car_id, 'date' => $selected_date]);
+        $total_kwh = round((float)($stmt_c->fetchColumn() ?? 0), 1);
+
+        // 3d. Positions GPS pour la carte
+        if ($selected_drive_id) {
+            $stmt_p = $pdo->prepare("SELECT latitude, longitude, speed FROM positions WHERE drive_id = ? AND latitude IS NOT NULL ORDER BY date ASC");
+            $stmt_p->execute([$selected_drive_id]);
+            $positions = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
+        }
     }
 
 } catch (PDOException $e) { 
@@ -95,7 +106,8 @@ try {
         .back-button:hover { background: #dc2626; }
         .back-button svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2.5; }
         
-        .date-picker { width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; outline: none; }
+        label { display: block; font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 5px; margin-top: 10px; }
+        .input-field { width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; outline: none; margin-bottom: 10px; }
         
         .stats-bar { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; }
         .stats-date { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 8px; text-transform: capitalize; }
@@ -132,7 +144,18 @@ try {
             </a>
             <h1 style="margin:0; font-size:18px; color:#dc2626;">TeslaMap Historique</h1>
         </div>
-        <input type="date" class="date-picker" value="<?= $selected_date ?>" onchange="location.href='?date='+this.value">
+
+        <label>Véhicule</label>
+        <select class="input-field" onchange="location.href='?date=<?= $selected_date ?>&car_id='+this.value">
+            <?php foreach ($cars as $car): ?>
+                <option value="<?= $car['id'] ?>" <?= $selected_car_id == $car['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($car['display_name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label>Date</label>
+        <input type="date" class="input-field" value="<?= $selected_date ?>" onchange="location.href='?car_id=<?= $selected_car_id ?>&date='+this.value">
     </div>
 
     <div class="stats-bar">
@@ -149,7 +172,7 @@ try {
         
         <?php foreach ($trajets as $t): ?>
             <div class="trajet-card <?= $selected_drive_id == $t['id'] ? 'active' : '' ?>" 
-                 onclick="location.href='?date=<?= $selected_date ?>&drive_id=<?= $t['id'] ?>'">
+                 onclick="location.href='?car_id=<?= $selected_car_id ?>&date=<?= $selected_date ?>&drive_id=<?= $t['id'] ?>'">
                 <div class="trajet-header">
                     <span class="time"><?= date('H:i', strtotime($t['start_date_local'])) ?></span>
                     <span class="km-val"><?= $t['km'] ?> km</span>
