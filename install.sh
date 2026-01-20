@@ -2,14 +2,16 @@
 
 ################################################################################
 # Script d'installation COMPLET TeslaMate Mail
-# Version 3.2 - Installation automatisée complète
+# Version 3.5 - Installation automatisée complète
 #
 # Ce script fait TOUT :
 # - Installation des dépendances
-# - Configuration Postfix (SMTP)
+# - Configuration Postfix (SMTP) avec double vérification pass
 # - Configuration Apache/PHP
+# - Nettoyage index.html par défaut
 # - Déploiement intégral (www -> /var/www/html, root -> /root)
-# - Configuration Docker & Nettoyage yaml
+# - Configuration Docker & Nettoyage yaml (sed [[:blank:]])
+# - Configuration Cron (5 min /bin/bash root)
 # - Récapitulatif détaillé de la configuration
 ################################################################################
 
@@ -29,7 +31,7 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.2                  ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.5                  ║${NC}"
 echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM        ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -67,8 +69,19 @@ read -p "Type de sécurité (1: SMTPS 465, 2: STARTTLS 587) [1] : " SECURITY_TYP
 SECURITY_TYPE=${SECURITY_TYPE:-1}
 
 read -p "Login SMTP : " SMTP_USER
-read -sp "Mot de passe SMTP : " SMTP_PASS
-echo ""
+
+# Double vérification du mot de passe SMTP
+while true; do
+    read -sp "Mot de passe SMTP : " SMTP_PASS
+    echo ""
+    read -sp "Confirmez le mot de passe SMTP : " SMTP_PASS_CONFIRM
+    echo ""
+    if [ "$SMTP_PASS" == "$SMTP_PASS_CONFIRM" ] && [ -n "$SMTP_PASS" ]; then
+        break
+    else
+        echo -e "${RED}✗ Les mots de passe ne correspondent pas ou sont vides. Réessayez.${NC}"
+    fi
+done
 
 read -p "Email expéditeur : " SMTP_FROM
 read -p "Email destinataire par défaut : " DEFAULT_EMAIL
@@ -76,7 +89,7 @@ read -p "Email destinataire par défaut : " DEFAULT_EMAIL
 # ============================================================================
 # ÉTAPE 1 : Installation des dépendances
 # ============================================================================
-echo -e "${GREEN}[1/8] Installation des dépendances système${NC}"
+echo -e "${GREEN}[1/9] Installation des dépendances système${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
 apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring postgresql-client unzip zip curl wget logrotate net-tools postfix mailutils libsasl2-2 libsasl2-modules ca-certificates mosquitto-clients
@@ -84,10 +97,9 @@ apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring po
 # ============================================================================
 # ÉTAPE 2 : Configuration de Postfix
 # ============================================================================
-echo -e "${GREEN}[2/8] Configuration de Postfix${NC}"
+echo -e "${GREEN}[2/9] Configuration de Postfix${NC}"
 DOMAIN=$(echo "$SMTP_FROM" | cut -d'@' -f2)
 
-# Configuration de base simplified pour l'affichage ici
 cat > /etc/postfix/main.cf <<EOF
 myhostname = $HOSTNAME
 mydomain = $DOMAIN
@@ -111,40 +123,60 @@ postmap /etc/postfix/generic
 systemctl restart postfix
 
 # ============================================================================
-# ÉTAPE 4 & 5 : Extraction et Déploiement (TOUS LES FICHIERS)
+# ÉTAPE 3 : Nettoyage Apache
 # ============================================================================
-echo -e "${GREEN}[4/8] Déploiement des fichiers (Archive Intégrale)${NC}"
+echo -e "${GREEN}[3/9] Nettoyage de l'installation Apache par défaut${NC}"
+rm -f /var/www/html/index.html
+echo -e "${GREEN}✓ index.html supprimé${NC}"
+
+# ============================================================================
+# ÉTAPE 4 & 5 : Extraction et Déploiement Intégral
+# ============================================================================
+echo -e "${GREEN}[4/9] Déploiement des fichiers (Archive Intégrale)${NC}"
 TEMP_EXTRACT="/tmp/teslamate_extract_$$"
 mkdir -p "$TEMP_EXTRACT"
 unzip -q "$ZIP_FILE" -d "$TEMP_EXTRACT"
 
-# Déploiement WWW
+# Déploiement WWW (tous les fichiers)
 if [ -d "$TEMP_EXTRACT/www" ]; then
     cp -r "$TEMP_EXTRACT/www"/. /var/www/html/
     mkdir -p /var/www/html/cgi-bin
     chown -R www-data:www-data /var/www/html/
+    chmod -R 755 /var/www/html/
 fi
 
-# Déploiement ROOT
+# Déploiement ROOT (tous les fichiers)
 if [ -d "$TEMP_EXTRACT/root" ]; then
     cp -r "$TEMP_EXTRACT/root"/. /root/
     chmod +x /root/*.sh 2>/dev/null || true
 fi
 
 # ============================================================================
+# ÉTAPE 6 : Configuration du Cron
+# ============================================================================
+echo -e "${GREEN}[6/9] Configuration de la tâche planifiée (Cron)${NC}"
+CRON_JOB="*/5 * * * * /bin/bash /root/teslacharge.sh > /dev/null 2>&1"
+(crontab -l 2>/dev/null | grep -v "teslacharge.sh"; echo "$CRON_JOB") | crontab -
+echo -e "${GREEN}✓ Cron root ajouté${NC}"
+
+# ============================================================================
 # ÉTAPE 7 : Configuration Docker & Nettoyage spécifique
 # ============================================================================
-echo -e "${GREEN}[7/8] Configuration Docker${NC}"
+echo -e "${GREEN}[7/9] Configuration Docker et nettoyage YAML${NC}"
 DOCKER_COMPOSE_PATH=""
 for path in "/opt/teslamate/docker-compose.yml" "/home/$USER/teslamate/docker-compose.yml" "./docker-compose.yml"; do
     if [ -f "$path" ]; then DOCKER_COMPOSE_PATH="$path"; break; fi
 done
 
+DB_USER="N/A"
+DB_PASS="N/A"
+DB_NAME="N/A"
+
 if [ -n "$DOCKER_COMPOSE_PATH" ]; then
-    # Nettoyage selon demande : sed -i 's/[[:blank:]]#.*//'
+    # Suppression des commentaires tout en gardant l'indentation
     sed -i 's/[[:blank:]]#.*//' "$DOCKER_COMPOSE_PATH"
     
-    # Extraction des infos DB pour le récap final
+    # Extraction des informations de base de données
     DB_USER=$(grep "POSTGRES_USER=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
     DB_PASS=$(grep "POSTGRES_PASSWORD=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
     DB_NAME=$(grep "POSTGRES_DB=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
@@ -167,13 +199,11 @@ echo -e "   Destinataire     : ${YELLOW}$DEFAULT_EMAIL${NC}"
 echo ""
 
 if [ -n "$DOCKER_COMPOSE_PATH" ]; then
-    echo -e "${CYAN}🐳 CONFIGURATION DOCKER-COMPOSE (BASE DE DONNÉES) :${NC}"
-    echo -e "   Fichier source   : ${YELLOW}$DOCKER_COMPOSE_PATH${NC}"
+    echo -e "${CYAN}🐳 CONFIGURATION DOCKER-COMPOSE (DB) :${NC}"
+    echo -e "   Fichier          : ${YELLOW}$DOCKER_COMPOSE_PATH${NC}"
     echo -e "   Database Name    : ${GREEN}$DB_NAME${NC}"
     echo -e "   Database User    : ${GREEN}$DB_USER${NC}"
     echo -e "   Database Pass    : ${GREEN}$DB_PASS${NC}"
-else
-    echo -e "${RED}⚠ Aucune donnée Docker extraite (fichier non trouvé).${NC}"
 fi
 
 echo ""
@@ -181,5 +211,5 @@ echo -e "${CYAN}🌐 ACCÈS :${NC}"
 IP_ADDR=$(hostname -I | awk '{print $1}')
 echo -e "   URL : ${GREEN}http://$IP_ADDR/tesla.php${NC}"
 echo ""
-rm -rf "$TEMP_EXTRACT"
 
+rm -rf "$TEMP_EXTRACT"
