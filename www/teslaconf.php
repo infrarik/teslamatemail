@@ -295,8 +295,8 @@ if (isset($_POST['add_telegram_user'])) {
       <form method="POST" class="bg-gray-900 border border-gray-700 rounded-xl p-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="space-y-2">
-            <label class="text-sm text-gray-400 ml-1">Nom</label>
-            <input type="text" name="telegram_user_name" placeholder="Ex: Jean Dupont" required
+            <label class="text-sm text-gray-400 ml-1">Utilisateur Telegram</label>
+            <input type="text" name="telegram_user_name" placeholder="Ex: @mon_nom_telegram" required
               class="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all text-white">
           </div>
           <div class="space-y-2">
