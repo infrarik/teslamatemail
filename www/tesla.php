@@ -211,6 +211,16 @@ try {
             </div>
             
             <p class="text-center text-[10px] text-gray-600 pt-4 uppercase tracking-widest">Mise à jour automatique toutes les 30s</p>
+            
+            <div class="border-t border-gray-700 mt-8 pt-6">
+              <div class="flex justify-center items-center gap-6 text-xs text-gray-500">
+                <a href="credits.php" class="hover:text-white transition-colors">Crédits</a>
+                <span class="text-gray-700">•</span>
+                <a href="parrain.php" class="hover:text-white transition-colors">Parrainage Tesla</a>
+                <span class="text-gray-700">•</span>
+                <span>Version 1.2 / 20/01/2026</span>
+              </div>
+            </div>
           </div>
         </div>
       `;
