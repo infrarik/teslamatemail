@@ -41,7 +41,7 @@ try {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#dc2626">
-  <title>TeslaMate Mobile</title>
+  <title>TeslaMate Mail</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
@@ -111,10 +111,24 @@ try {
                   <svg class="w-5 h-5 ${loading ? 'animate-spin text-red-500' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 </button>
               </div>
-              <div class="flex justify-center gap-8 text-[10px] font-bold tracking-widest text-gray-500 uppercase">
-                <a href="http://${SERVER_IP}:4000" target="_blank" class="hover:text-white transition-colors">Teslamate</a>
-                <a href="http://${SERVER_IP}:3000" target="_blank" class="hover:text-white transition-colors">Grafana</a>
+
+	        <div class="w-full mt-4">
+                <div class="flex justify-center gap-8">
+                  <a href="http://${SERVER_IP}:4000" target="_blank" class="flex flex-col items-center gap-2 text-xl font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wide">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Teslamate</span>
+                  </a>
+                  <a href="http://${SERVER_IP}:3000" target="_blank" class="flex flex-col items-center gap-2 text-xl font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-wide">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                    </svg>
+                    <span>Grafana</span>
+                  </a>
+                </div>
               </div>
+
             </div>
           </div>
 
