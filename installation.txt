@@ -1,353 +1,60 @@
-
-## 🚀 Installation
-
-### Étape 1 : Installation de TeslaMate
-
-> **⚠️ Important** : TeslaMate doit être installé et fonctionnel AVANT d'installer TeslaMate Mail.
-
-#### Installation standard de TeslaMate
-
-```bash
-# 1. Créer le répertoire
-sudo mkdir -p /opt/teslamate
-cd /opt/teslamate
-
-# 2. Télécharger docker-compose.yml
-sudo wget https://raw.githubusercontent.com/teslamate-org/teslamate/master/docker-compose.yml
-
-# 3. Éditer la configuration
-sudo nano docker-compose.yml
-```
-
-**Configuration minimale requise** :
-```yaml
-services:
-  teslamate:
-    environment:
-      - DATABASE_USER=teslamate
-      - DATABASE_PASS=votre_mot_de_passe
-      - DATABASE_NAME=teslamate
-      - MQTT_HOST=mosquitto
-    ports:
-      - 4000:4000
-    
-  database:
-    environment:
-      - POSTGRES_USER=teslamate
-      - POSTGRES_PASSWORD=votre_mot_de_passe
-      - POSTGRES_DB=teslamate
-    ports:
-      - "5432:5432"  # ⚠️ OBLIGATOIRE pour TeslaMate Mail
-```
-
-#### Démarrage de TeslaMate
-
-```bash
-# Lancer TeslaMate
-sudo docker-compose up -d
-
-# Vérifier que tout fonctionne
-sudo docker-compose ps
-```
-
-#### Configuration initiale
-
-1. Accédez à `http://IP_SERVEUR:4000`
-2. Suivez l'assistant de configuration
-3. Connectez votre compte Tesla après avoir généré les jetons (Token) en suivant ce tutoriel : https://www.myteslamate.com/fr/jeton-tesla/
-4. Attendez que les premières données soient collectées
-
----
-
-### Étape 2 : Installation de TeslaMate Mail
-
-télécharger les fichiers depuis https://github.com/infrarik/teslamatemail
-Vous avez besoin de :
-. files.zip
-.install.sh
-.uninstall.sh si vous souhaitez désinstaller Teslamate-Mail uniquement (cela ne désinstallera pas Teslamate, ne le modifiera pas non plus)
-
-#### Lancement de l'installation
-
-```bash
-# Rendre le script exécutable
-chmod +x install.sh
-
-# Lancer l'installation en tant que root
-bash install.sh
-
-##### 📧 Configuration Email
-
-```
-Hostname du serveur : teslamate.mondomaine.fr
-Serveur SMTP : mail.mondomaine.fr
-Port SMTP : 465 (SMTPS) ou 587 (STARTTLS)
-Login SMTP : notifications@mondomaine.fr
-Mot de passe SMTP : ********
-Email expéditeur : noreply@mondomaine.fr
-Email destinataire : mon-email@gmail.com
-```
-
-##### 🔔 Configuration MQTT (Optionnel)
-
-Installer Mosquitto ? (o/N) : o
-Port d'écoute : 1883
-Créer un utilisateur ? (O/n) : o
-Nom d'utilisateur : teslamate
-Mot de passe : ******** (saisi 2 fois)
-```
-
-Le script installe automatiquement :
-- ✅ Apache2 + PHP
-- ✅ PostgreSQL client
-- ✅ Postfix (serveur mail)
-- ✅ Mosquitto (si choisi)
-- ✅ Configuration automatique
-- ✅ Cron pour surveillance
-
-#### Durée d'installation
-
-⏱️ **5 à 10 minutes** selon votre connexion
-
----
-
-### Étape 3 : Configuration via l'interface web
-
-#### Accès à l'interface
-
-Une fois l'installation terminée, accédez à :
-
-```
-http://IP_SERVEUR/index.php
-```
-
-Ou directement à la configuration :
-
-```
-http://IP_SERVEUR/teslaconf.php
-```
-
-#### Configuration TeslaMate Mail
-
-**1. Configuration MQTT** (si non installé automatiquement)
-- Hôte : `localhost` ou IP du broker
-- Port : `1883`
-- Utilisateur : (optionnel)
-- Mot de passe : (optionnel)
-- Topic : `teslamate/cars/1`
-
-**2. Configuration Email**
-- Email de notification : votre email
-
-**3. Configuration Docker**
-- Chemin : `/opt/teslamate/docker-compose.yml`
-- Le script détecte automatiquement ce chemin
-
-
-**4. Configuration Telegram**
-- Vous aurez besoin d'un token pour créer un Bot télégram, Bot qui sera utilisé par Teslamate-Mail.
-- Il faudra indiquer les informations sur l'utilisateur à qui envoyer les informations : le nom (@xxxx), le ChatID (12345678).
-Tutoriel conseillé : https://az-tools.com/actu/creer-un-bot-telegram-etapes-simples-pour-recuperer-le-token-et-lid-de-chat/#:~:text=R%C3%A9cup%C3%A9rer%20ton%20ID%20de%20chat%20Telegram,-Pour%20interagir%20avec&text=Envoyez%20un%20message%20%C3%A0%20votre,(par%20exemple%20%3A%20Hello%20).&text=%E2%9E%A1%20Ce%20nombre%20(%20123456789%20)%20est%20votre%20ID%20de%20chat%20Telegram.
-
-
-**4. Activer les notifications**
-- ✅ Cocher "Activer les notifications MQTT"
-- ✅ Cocher "Activer les notifications Email"
-- ✅ Cocher "Activer les notifications Telegram"
-
-!!! IMPORTANT : à chaque changement de configuration, il faut réactiver les notifications !!!
-
-#### Sauvegarde
-
-Cliquez sur **"Enregistrer la configuration"** et attendez le message de confirmation.
-
----
-
-## ⚙️ Configuration
-
-### Personnalisation du cron
-
-Par défaut, le script vérifie les nouvelles charges toutes les **5 minutes**.
-
-Pour modifier :
-
-# Éditer le crontab
-sudo crontab -e
-
-# Modifier la ligne (exemple : toutes les 10 minutes)
-*/10 * * * * /root/teslacharge.sh >> /var/log/teslacharge.log 2>&1
-```
-
-### Configuration Postfix avancée
-
-Le fichier de configuration est dans `/etc/postfix/main.cf`
-
-```bash
-# Éditer
-sudo nano /etc/postfix/main.cf
-
-# Redémarrer après modification
-sudo systemctl restart postfix
-```
-
-### Vérification des logs
-
-```bash
-# Logs des emails
-sudo tail -f /var/log/mail.log
-
-# Logs du script de surveillance
-sudo tail -f /var/log/teslacharge.log
-
-# Logs Apache
-sudo tail -f /var/log/apache2/error.log
-
-# Logs Mosquitto (si installé)
-sudo journalctl -u mosquitto -f
-```
-
----
-
-## 📱 Utilisation
-
-### Dashboard principal
-
-Accès : `http://IP_SERVEUR/tesla.html`
-
-- 📊 Vue d'ensemble des charges récentes
-- 🗺️ Carte interactive avec les lieux de charge
-- 📈 Statistiques en temps réel
-
-### Consultation de l'historique
-
-Accès : `http://IP_SERVEUR/teslaliste.php`
-
-- Liste des 10 dernières charges
-- Détails complets pour chaque charge
-- Filtres et recherche
-
-### Rapports de consommation
-
-Accès : `http://IP_SERVEUR/teslacalcul.php`
-
-**Fonctionnalités** :
-1. Sélectionner une période (début/fin)
-2. Filtrer par lieu (geofence)
-3. Choisir le format d'export :
-   - 📧 Email
-   - 📄 PDF
-   - 📊 CSV
-
-**Export complet** :
-- ✅ Cocher "Export complet" pour obtenir :
-  - Date et heure de chaque charge
-  - Position GPS exacte
-  - kWh ajoutés
-  - Durée de la charge
-
-### Notifications email
-
-Les emails sont envoyés automatiquement après chaque charge et contiennent :
-- 📅 Date et heure
-- 📍 Lieu (si geofence configurée)
-- ⚡ Énergie ajoutée (kWh)
-- 💰 Coût estimé
-- ⏱️ Durée de la charge
-
----
-
-## 🔍 Dépannage
-
-### Problème : Aucun email reçu
-
-# Vérifier le statut de Postfix
-sudo systemctl status postfix
-
-# Vérifier les logs
-sudo tail -f /var/log/mail.log
-
-# Tester l'envoi manuel
-echo "Test" | mail -s "Test TeslaMate" votre-email@exemple.com
-```
-
-**Solutions courantes** :
-- Vérifier les identifiants SMTP
-- Vérifier que le port est correct (465 ou 587)
-- Vérifier les règles firewall
-- Vérifier que le serveur SMTP autorise l'envoi
-
-### Problème : Erreur de connexion à la base de données
-
-# Vérifier que PostgreSQL est exposé
-sudo docker-compose -f /opt/teslamate/docker-compose.yml ps
-
-# Vérifier le port 5432
-sudo netstat -tulpn | grep 5432
-
-# Tester la connexion
-psql -h localhost -U teslamate -d teslamate
-```
-
-**Solution** :
-
-# Éditer docker-compose.yml
-sudo nano /opt/teslamate/docker-compose.yml
-
-# Ajouter sous 'database:' :
-    ports:
-      - "5432:5432"
-
-# Redémarrer
-sudo docker-compose -f /opt/teslamate/docker-compose.yml restart
-```
-
-### Problème : Interface web inaccessible
-
-
-# Vérifier Apache
-sudo systemctl status apache2
-
-# Vérifier les permissions
-ls -la /var/www/html/
-
-# Redémarrer Apache
-sudo systemctl restart apache2
-```
-
-### Problème : MQTT ne fonctionne pas
-
-# Vérifier Mosquitto
-sudo systemctl status mosquitto
-
-# Tester la connexion
-mosquitto_pub -h localhost -t "test" -m "hello"
-mosquitto_sub -h localhost -t "test"
-
-# Vérifier les logs
-sudo journalctl -u mosquitto -n 50
-```
-
-### Problème : Script cron ne s'exécute pas
-
-
-# Vérifier le cron
-sudo crontab -l
-
-# Vérifier les logs
-sudo tail -f /var/log/teslacharge.log
-
-# Exécution manuelle pour tester
-sudo /root/teslacharge.sh
-```
-
----
-
-## 🙏 Remerciements
-
-- [TeslaMate](https://github.com/teslamate-org/teslamate) - Le projet principal
-- La communauté TeslaMate pour le support
-- Tous les contributeurs
-
----
-
-**Développé avec ❤️ pour la communauté Tesla**
+============================================================
+       GUIDE D'INSTALLATION - TESLAMATE MAIL v3.5
+============================================================
+
+⚠️ ATTENTION : PRÉREQUIS CRITIQUE ⚠️
+------------------------------------------------------------
+Docker et TeslaMate DOIVENT être installés AVANT de lancer
+ce script.
+
+Le système s'appuie sur la base de données existante de
+TeslaMate. Si Docker n'est pas présent ou si la base de
+données est vide (pas encore de données de roulage/charge),
+l'interface web restera vide et aucune notification ne
+pourra être envoyée.
+------------------------------------------------------------
+
+1. PRÉPARATION
+--------------
+* Assurez-vous que votre instance TeslaMate est fonctionnelle.
+* Localisez votre fichier 'docker-compose.yml' (généralement
+  dans /opt/teslamate ou /home/user/teslamate).
+* Placez le script 'install.sh' et l'archive 'files.zip'
+  dans le même répertoire sur votre serveur.
+
+2. EXÉCUTION DE L'INSTALLATION
+------------------------------
+Lancez le script en tant que root :
+
+   sudo bash install.sh
+
+3. ÉTAPES DU SCRIPT
+-------------------
+Le script automatisera les actions suivantes :
+   a. Installation des paquets (Apache, PHP, Postfix, etc.).
+   b. Configuration de votre serveur SMTP (avec double
+      vérification du mot de passe).
+   c. Nettoyage et déploiement intégral des fichiers web
+      dans /var/www/html.
+   d. Déploiement des scripts de monitoring dans /root.
+   e. Nettoyage automatique du fichier docker-compose.yml
+      (suppression des commentaires).
+   f. Ajout de la tâche Cron pour un scan toutes les 5 min.
+
+4. VÉRIFICATION D'INSTALLATION
+------------------------------
+À la fin du script, un récapitulatif s'affichera.
+Vérifiez bien que :
+* Le login/pass de la base de données extrait du YAML
+  est correct.
+* L'URL fournie (http://[IP]/tesla.php) est accessible.
+
+5. MAINTENANCE & LOGS
+---------------------
+* Logs du script de charge : /var/log/teslacharge.log
+* Logs email : /var/log/mail.log
+* Configuration manuelle : http://[IP]/teslaconf.php
+
+------------------------------------------------------------
+Support & Copyright © 2026 monwifi.fr / Eric B.
+============================================================
