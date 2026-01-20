@@ -12,6 +12,9 @@ if (file_exists($file)) {
     }
 }
 
+// On récupère l'IP du serveur pour remplacer localhost
+$server_ip = $_SERVER['SERVER_ADDR'] ?? '127.0.0.1';
+
 $db_user = "teslamate"; $db_pass = "secret_password"; $db_name = "teslamate";
 if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
     $docker_content = file_get_contents($config['DOCKER_PATH']);
@@ -23,7 +26,8 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
 // --- 2. RÉCUPÉRATION SQL DE LA DERNIÈRE CHARGE ---
 $last_charge_kwh = 0;
 try {
-    $pdo = new PDO("pgsql:host=localhost;port=5432;dbname=$db_name", $db_user, $db_pass);
+    // Remplacement de localhost par l'IP du serveur dans le DSN
+    $pdo = new PDO("pgsql:host=$server_ip;port=5432;dbname=$db_name", $db_user, $db_pass);
     $sql = "SELECT charge_energy_added FROM charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1";
     $result = $pdo->query($sql)->fetchColumn();
     $last_charge_kwh = $result ? round((float)$result, 2) : 0;
@@ -51,6 +55,7 @@ try {
     const API_URL = 'teslamate_api.php';
     const REFRESH_INTERVAL = 30; 
     const PHP_LAST_CHARGE = <?= $last_charge_kwh ?>;
+    const SERVER_IP = '<?= $server_ip ?>';
     let carData = null;
     let loading = false;
     let error = null;
@@ -84,7 +89,6 @@ try {
       }
       if (!carData) return;
 
-      // Correction : Utilisation de carData.name (pour afficher F-HEAVY)
       const carName = carData.name || 'Ma Tesla';
 
       app.innerHTML = `
@@ -106,6 +110,10 @@ try {
                 <button onclick="fetchData()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors shadow-lg">
                   <svg class="w-5 h-5 ${loading ? 'animate-spin text-red-500' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 </button>
+              </div>
+              <div class="flex justify-center gap-8 text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+                <a href="http://${SERVER_IP}:4000" target="_blank" class="hover:text-white transition-colors">Teslamate</a>
+                <a href="http://${SERVER_IP}:3000" target="_blank" class="hover:text-white transition-colors">Grafana</a>
               </div>
             </div>
           </div>
