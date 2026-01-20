@@ -136,7 +136,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         echo '<div style="margin-bottom:20px;text-align:center"><strong>Distance :</strong> '.$resultats['total_km'].' km | <strong>Charges :</strong> '.$resultats['nb'].' | <strong>Energie :</strong> '.$resultats['total_kwh'].' kWh</div>';
         echo '<table><tr>';
         foreach($cols as $c) {
-            $labels = ['date'=>'Date','kwh'=>'kWh','duree'=>'Durée','km'=>'km','ville'=>'Ville','gps'=>'GPS'];
+            $labels = ['date'=>'Date','kwh'=>'kWh chargés','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS'];
             echo "<th>".$labels[$c]."</th>";
         }
         echo '</tr>';
