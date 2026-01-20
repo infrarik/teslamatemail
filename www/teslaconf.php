@@ -111,7 +111,7 @@ if (isset($_POST['add_telegram_user'])) {
         </div>
         <div>
             <p class="text-orange-300 font-bold">Configuration enregistrée !</p>
-            <p class="text-orange-200/80 text-sm">Pensez à <a href="teslamail.php" class="underline font-bold hover:text-white transition-colors">activer les notifications</a> suite à ces changements.</p>
+            <p class="text-orange-200/80 text-sm">Pensez à <a href="teslanotif.php" class="underline font-bold hover:text-white transition-colors">activer les notifications</a> suite à ces changements.</p>
         </div>
     </div>
     <?php endif; ?>
