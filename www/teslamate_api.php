@@ -32,8 +32,7 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
 try {
     $pdo = new PDO("pgsql:host=$server_ip;port=5432;dbname=$db_name", $db_user, $db_pass);
     
-    // REQUÊTE CALCULÉE POUR TESLAMATE
-    // On fusionne positions (pneu/temp), states (état) et charges (puissance)
+    // REQUÊTE MISE À JOUR : Récupération de added ET used
     $sql = "
         SELECT 
             p.battery_level, p.odometer, p.inside_temp, p.outside_temp, 
@@ -41,7 +40,13 @@ try {
             p.tpms_pressure_fl, p.tpms_pressure_fr, p.tpms_pressure_rl, p.tpms_pressure_rr,
             s.state,
             c.name,
-            (SELECT charger_power FROM charges ORDER BY date DESC LIMIT 1) as charger_power,
+            -- Puissance de charge actuelle (kW)
+            (SELECT charger_power FROM charges ORDER BY date DESC LIMIT 1) as charger_actual_power_kw,
+            -- Énergie ajoutée à la batterie (kWh)
+            (SELECT charge_energy_added FROM charging_processes WHERE end_date IS NULL ORDER BY start_date DESC LIMIT 1) as energy_added_kwh,
+            -- Énergie consommée à la prise (kWh)
+            (SELECT charge_energy_used FROM charging_processes WHERE end_date IS NULL ORDER BY start_date DESC LIMIT 1) as energy_used_kwh,
+            -- Vérification si une session est active
             (SELECT COUNT(*) FROM charging_processes WHERE end_date IS NULL) as active_charging_sessions
         FROM positions p
         LEFT JOIN states s ON s.car_id = p.car_id AND s.end_date IS NULL
@@ -54,23 +59,24 @@ try {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($row) {
-        // Détermination forcée de l'état de charge
-        $isCharging = ($row['active_charging_sessions'] > 0 || (float)$row['charger_power'] > 0);
+        $isCharging = ($row['active_charging_sessions'] > 0 || (float)$row['charger_actual_power_kw'] > 0);
         
         $data = [
-            "name" => $row['name'],
-            "state" => $isCharging ? "charging" : $row['state'],
-            "battery_level" => (int)$row['battery_level'],
-            "odometer" => (float)$row['odometer'],
+            "name"                 => $row['name'],
+            "state"                => $isCharging ? "charging" : $row['state'],
+            "battery_level"        => (int)$row['battery_level'],
+            "odometer"             => (float)$row['odometer'],
             "est_battery_range_km" => (float)$row['est_battery_range_km'],
-            "inside_temp" => (float)$row['inside_temp'],
-            "outside_temp" => (float)$row['outside_temp'],
-            "tpms_pressure_fl" => (float)$row['tpms_pressure_fl'],
-            "tpms_pressure_fr" => (float)$row['tpms_pressure_fr'],
-            "tpms_pressure_rl" => (float)$row['tpms_pressure_rl'],
-            "tpms_pressure_rr" => (float)$row['tpms_pressure_rr'],
-            "charger_power" => (float)$row['charger_power'],
-            "is_charging" => $isCharging
+            "inside_temp"          => (float)$row['inside_temp'],
+            "outside_temp"         => (float)$row['outside_temp'],
+            "tpms_pressure_fl"     => (float)$row['tpms_pressure_fl'],
+            "tpms_pressure_fr"     => (float)$row['tpms_pressure_fr'],
+            "tpms_pressure_rl"     => (float)$row['tpms_pressure_rl'],
+            "tpms_pressure_rr"     => (float)$row['tpms_pressure_rr'],
+            "charger_power_kw"     => (float)$row['charger_actual_power_kw'],
+            "energy_added_kwh"     => (float)($row['energy_added_kwh'] ?? 0),
+            "energy_used_kwh"      => (float)($row['energy_used_kwh'] ?? 0),
+            "is_charging"          => $isCharging
         ];
         echo json_encode($data);
     }

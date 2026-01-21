@@ -79,14 +79,22 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
     if (preg_match('/POSTGRES_DB[:=]\s*(\S+)/', $docker_content, $m)) $db_name = str_replace(['"', "'"], '', trim($m[1]));
 }
 
-// --- SQL : DERNIÈRE CHARGE ---
-$last_charge_kwh = 0;
+// --- SQL : DERNIÈRE CHARGE (ADDED ET USED) ---
+$last_charge_added = 0;
+$last_charge_used = 0;
 try {
     $pdo = new PDO("pgsql:host=$server_ip;port=5432;dbname=$db_name", $db_user, $db_pass);
-    $sql = "SELECT charge_energy_added FROM charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1";
-    $result = $pdo->query($sql)->fetchColumn();
-    $last_charge_kwh = $result ? round((float)$result, 2) : 0;
-} catch (Exception $e) { $last_charge_kwh = 0; }
+    $sql = "SELECT charge_energy_added, charge_energy_used FROM charging_processes WHERE end_date IS NOT NULL ORDER BY end_date DESC LIMIT 1";
+    $stmt = $pdo->query($sql);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $last_charge_added = round((float)$row['charge_energy_added'], 2);
+        $last_charge_used = round((float)$row['charge_energy_used'], 2);
+    }
+} catch (Exception $e) { 
+    $last_charge_added = 0; 
+    $last_charge_used = 0; 
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?= $default_lang ?>">
@@ -109,7 +117,8 @@ try {
   <script>
     const API_URL = 'teslamate_api.php';
     const REFRESH_INTERVAL = 30;   
-    const PHP_LAST_CHARGE = <?= $last_charge_kwh ?>;
+    const PHP_LAST_CHARGE_ADDED = <?= $last_charge_added ?>;
+    const PHP_LAST_CHARGE_USED = <?= $last_charge_used ?>;
     const SERVER_IP = '<?= $server_ip ?>';
      
     const i18n = {
@@ -120,7 +129,7 @@ try {
         battery: "Batterie", est_range: "Autonomie estimée", interior: "Intérieur",
         exterior: "Extérieur", tires: "Pneus", fl: "Avant Gauche", fr: "Avant Droit",
         rl: "Arrière Gauche", rr: "Arrière Droit", last_charge: "Dernière charge",
-        added: "kWh ajoutés", update_msg: "Mise à jour automatique toutes les 30s",
+        added: "kWh ajoutés", used: "kWh consommés", update_msg: "Mise à jour automatique toutes les 30s",
         credits: "Credits", referral: "Parrainage", referral2: "Lien de parrainage", charging: "EN CHARGE"
       },
       en: {
@@ -130,7 +139,7 @@ try {
         battery: "Battery", est_range: "Estimated Range", interior: "Interior",
         exterior: "Exterior", tires: "Tires", fl: "Front Left", fr: "Front Right",
         rl: "Rear Left", rr: "Rear Right", last_charge: "Last Charge",
-        added: "kWh added", update_msg: "Auto-refresh every 30s",
+        added: "kWh added", used: "kWh used", update_msg: "Auto-refresh every 30s",
         credits: "Credits", referral: "Referral", referral2: "Referral link", charging: "CHARGING"
       }
     };
@@ -223,7 +232,7 @@ try {
             <div class="bg-gradient-to-br ${isCharging ? 'from-green-900/40 to-gray-900 border-green-700/50' : 'from-green-900/20 to-gray-900 border-green-700/30'} rounded-3xl p-6 border shadow-2xl">
               <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold">${t.battery}</h2>
-                ${isCharging && carData.charger_power ? `<span class="text-green-400 font-bold animate-pulse-soft">${carData.charger_power} kW</span>` : ''}
+                ${isCharging && carData.charger_power_kw ? `<span class="text-green-400 font-bold animate-pulse-soft">${carData.charger_power_kw} kW</span>` : ''}
               </div>
               <div class="flex justify-between items-end mb-4">
                 <span class="text-6xl font-black text-green-400 tracking-tighter">${carData.battery_level}%</span>
@@ -260,7 +269,11 @@ try {
 
             <div class="bg-blue-600/20 rounded-2xl p-5 border border-blue-500/30 text-center">
                 <p class="text-sm font-bold text-blue-400 uppercase mb-1">${t.last_charge}</p>
-                <p class="text-4xl font-black text-white">${PHP_LAST_CHARGE} <span class="text-xl font-normal text-blue-300">${t.added}</span></p>
+                <div class="flex justify-center items-baseline gap-2">
+                  <p class="text-4xl font-black text-white">${PHP_LAST_CHARGE_ADDED} <span class="text-xl font-normal text-blue-300">${t.added}</span></p>
+                  <span class="text-gray-500 text-xl">|</span>
+                  <p class="text-4xl font-black text-white">${PHP_LAST_CHARGE_USED} <span class="text-xl font-normal text-blue-300">${t.used}</span></p>
+                </div>
             </div>
              
             <p class="text-center text-[10px] text-gray-600 pt-4 uppercase tracking-widest">${t.update_msg}</p>
