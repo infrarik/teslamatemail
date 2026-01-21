@@ -58,6 +58,23 @@ La configuration s'effectue en cliquant sur la roue dentelée de l'écran princi
 
 ---
 
+## Mise à jour
+
+Vous pouvez effectuer une mise à jour des fichiers lorsque files.zip a été mis à jour.
+Chargez le dans /root puis lancez le script : bash installweb.sh
+Ce script procède à l'extraction et installera automatiquement les fichiers à jour, sans jamais toucher à
+votre configuration.
+
+---
+
+## Interactions avec Teslamate :
+
+Teslamate Web n'intervient qu'une seule fois sur Teslamate en retirant les commentaires de votre docker-compose.yml, 
+à l'exclusion de toute autre modification. Teslamate Web se contente de récupérer les infos de la base de données de
+Teslamate, de les interpréter sans jamais les modifier.
+
+---
+
 ## Vérifications techniques
 
 En cas de soucis, pensez à vérifier :
@@ -67,6 +84,14 @@ En cas de soucis, pensez à vérifier :
 3. /var/www/html/cgi-bin/telegram_user.json : ce fichier contient le ou les destinataires Telegram au format JSON
 4. abonnez vous avec mosquitto_sub au topic d'envoi configuré sur votre Teslamate Mail, pratique pour vérifier le
    bon fonctionnement.
+
+---
+
+## Parrainage Tesla
+
+Si ce développement GNU gratuit vous plait, n'hésitez pas à utiliser le lien de parraiange Tesla figurant en bas de la page principale,
+c'est toujours un coup de pouce utile pour poursuivre et faire évoluer. Un grand merci par avance !
+
 
 ===============================================================================
 
