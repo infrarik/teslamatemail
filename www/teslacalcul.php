@@ -43,7 +43,7 @@ $texts = [
         'energy_label' => "Énergie",
         'print_btn' => "Imprimer / PDF",
         'sent_to' => "Envoyé à",
-        'cols' => ['date'=>'Date','kwh'=>'kWh chargés','duree'=>'Durée','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
+        'cols' => ['date'=>'Date','kwh'=>'kWh chargés','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
     ],
     'en' => [
         'title' => "Consumption",
