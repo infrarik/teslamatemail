@@ -20,11 +20,8 @@ TeslaMate Mail permet de notifier et de transmettre les données de charge de vo
 ### 🤖 Bot Telegram (Notifications d'état)
 Le bot envoie des messages formatés pour les événements suivants :
 * **Test de configuration :** "🔔 Test de notification TeslaMate ✅ Votre bot Telegram est configuré correctement ! 📅 [Date et heure]"
-* **Charge démarrée :** "🔌 Charge démarrée 🔋 Batterie: [niveau]% 📅 [Date et heure]"
 * **Charge terminée :** "✅ Charge terminée 🔋 Batterie: [niveau]% 📅 [Date et heure]"
-* **Batterie faible :** "⚠️ Batterie faible 🔋 Batterie: [niveau]% 📅 [Date et heure]"
-* **Mise à jour disponible :** "🆕 Mise à jour disponible 📦 Version: [numéro] 📅 [Date et heure]"
-* **Porte ouverte :** "🚪 Porte ouverte ⚠️ Vérifiez votre véhicule 📅 [Date et heure]"
+D'autres messages sont prévus, pas actifs pour le moment.
 
 ### 📡 Intégration MQTT (Données brutes)
 Pour chaque fin de charge, le programme publie une trame au format JSON :
@@ -73,11 +70,8 @@ TeslaMate Mail allows you to notify and transmit your vehicle's charging data vi
 ### 🤖 Telegram Bot (Status Notifications)
 The bot sends formatted messages for the following events:
 * **Configuration Test:** "🔔 TeslaMate Notification Test ✅ Your Telegram bot is configured correctly! 📅 [Date and Time]"
-* **Charging Started:** "🔌 Charging started 🔋 Battery: [level]% 📅 [Date and Time]"
 * **Charging Finished:** "✅ Charging finished 🔋 Battery: [level]% 📅 [Date and Time]"
-* **Low Battery:** "⚠️ Low battery 🔋 Battery: [level]% 📅 [Date and Time]"
-* **Update Available:** "🆕 Update available 📦 Version: [number] 📅 [Date and Time]"
-* **Door Open:** "🚪 Door open ⚠️ Please check your vehicle 📅 [Date and Time]"
+Other messages are possible, not yet activated.
 
 ### 📡 MQTT Integration (Raw Data)
 At the end of each charging session, the program publishes a JSON-formatted frame:
