@@ -42,58 +42,37 @@ Pour faire fonctionner TeslaMate Mail, vous devez configurer :
 
 ---
 
+## Installation
+1. copiez les fichiers files.zip, install.sh, installweb.sh, uninstall.sh dans votre
+   répertoire /root
+2. Depuis root, lancez : bash install.sh
+   Répondez aux questions sur l'installation des emails, etc.
+3. allez sur http://votre_ip pour configurer teslamate mail, en choisissant français ou anglais
+   en haut à droite.
+
+---
+
+## Configuration
+
+La configuration s'effectue en cliquant sur la roue dentelée de l'écran principal. Pensez à bien sauvegarder vos choix.
+
+---
+
+## Vérifications techniques
+
+En cas de soucis, pensez à vérifier :
+1. /var/www/html/cgi-bin/setup : ce fichier contient la configuration de votre Teslamate Mail.
+2. /var/www/html/cgi-bin/lastchargeid : ce fichier contient le numéro de la dernière session de charge
+   sur votre Teslamate.
+3. /var/www/html/cgi-bin/telegram_user.json : ce fichier contient le ou les destinataires Telegram au format JSON
+4. abonnez vous avec mosquitto_sub au topic d'envoi configuré sur votre Teslamate Mail, pratique pour vérifier le
+   bon fonctionnement.
+
+===============================================================================
+
+
 ## À propos de la licence
 
 1. **Obligation de Copyleft :** Toute modification doit rester sous licence GPL.
 2. **Accès au Code Source :** Obligation de fournir le code source.
 3. **Absence de Garantie :** Distribué sans aucune garantie.
-
-================================================================================
-
-# TeslaMate Mail (English Version)
-
-Copyright (C) 2026  monwifi.fr / Eric B.
-
-This program is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License (GNU GPL) as published 
-by the Free Software Foundation, either version 3 of the License, or 
-(at your option) any later version.
-
-**Important Note:** TeslaMate Mail has no official link with the TeslaMate project. It is solely an add-on that uses an already installed TeslaMate instance.
-
----
-
-## Main Features (EN)
-
-TeslaMate Mail allows you to notify and transmit your vehicle's charging data via three distinct channels:
-
-### 🤖 Telegram Bot (Status Notifications)
-The bot sends formatted messages for the following events:
-* **Configuration Test:** "🔔 TeslaMate Notification Test ✅ Your Telegram bot is configured correctly! 📅 [Date and Time]"
-* **Charging Finished:** "✅ Charging finished 🔋 Battery: [level]% 📅 [Date and Time]"
-Other messages are possible, not yet activated.
-
-### 📡 MQTT Integration (Raw Data)
-At the end of each charging session, the program publishes a JSON-formatted frame:
-* **Frame Example:** `{"id":837,"kwh":10.02,"soc":100,"duration":169}`
-
-### 📧 Email Notifications
-* **End of Charge:** Sends a summary email indicating the end of the session and the number of **kWh consumed**.
-
----
-
-## Prerequisites
-
-To run TeslaMate Mail, you must configure:
-1. **TeslaMate Instance:** Access to the Postgres database.
-2. **SMTP Server:** Credentials for sending emails.
-3. **MQTT Broker:** A server (e.g., Mosquitto) for JSON frames.
-4. **Telegram Bot:** An `API Token` and your `Chat ID`.
-
----
-
-## About the License
-
-1. **Copyleft Obligation:** Modifications must remain under the GPL license.
-2. **Access to Source Code:** Obligation to provide the full source code.
-3. **No Warranty:** Distributed with no warranty.
