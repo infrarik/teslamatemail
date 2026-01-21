@@ -96,22 +96,25 @@ try {
           <div class="bg-gray-800/90 backdrop-blur-sm border-b border-gray-700 p-4 sticky top-0 z-10">
             <div class="max-w-2xl mx-auto flex flex-col items-center space-y-4">
               <div class="text-center py-1">
-                <h1 class="text-2xl font-bold text-white tracking-tight">${carName}</h1>
+
+<h1 class="text-7xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-10 to-gray-700">
+    ${carName}
+</h1>
                 <h2 class="text-xl font-bold text-red-600">TeslaMate Mail</h2>
               </div>
               <div class="w-full flex items-center justify-between">
                 <div class="w-10"></div>
                 <div class="flex-1 flex justify-center items-center gap-4">
-                  <a href="teslamap.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A2 2 0 013 15.488V5.13a2 2 0 011.106-1.789L9 1m0 19v-19m0 19l6-3m-6-16l6 3m0 0l5.447-2.724A2 2 0 0121 4.512v10.358a2 2 0 01-1.106 1.789L15 20m0-19v19"></path></svg></a>
-<a href="teslanotif.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-    <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <a href="teslamap.php" title="Trajets" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A2 2 0 013 15.488V5.13a2 2 0 011.106-1.789L9 1m0 19v-19m0 19l6-3m-6-16l6 3m0 0l5.447-2.724A2 2 0 0121 4.512v10.358a2 2 0 01-1.106 1.789L15 20m0-19v19"></path></svg></a>
+<a href="teslanotif.php" title="Notifications" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
     </svg>
 </a>
-                  <a href="teslacalcul.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></a>
-                  <a href="teslaconf.php" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg></a>
+                  <a href="teslacalcul.php" title="Export" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></a>
+                  <a href="teslaconf.php" title="Configuration" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg></a>
                 </div>
-                <button onclick="fetchData()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors shadow-lg">
+                <button onclick="fetchData()" title="Rafraichir" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors shadow-lg">
                   <svg class="w-5 h-5 ${loading ? 'animate-spin text-red-500' : 'text-gray-300'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 </button>
               </div>
@@ -217,7 +220,7 @@ try {
             <p class="text-center text-[10px] text-gray-600 pt-4 uppercase tracking-widest">Mise à jour automatique toutes les 30s</p>
             
             <div class="border-t border-gray-700 mt-8 pt-6">
-              <div class="flex justify-center items-center gap-6 text-xs text-gray-500">
+              <div class="flex justify-center items-center gap-6 text-lg text-gray-500">
                 <a href="credits.php" class="hover:text-white transition-colors">Crédits</a>
                 <span class="text-gray-700">•</span>
                 <a href="parrain.php" class="hover:text-white transition-colors">Parrainage Tesla</a>

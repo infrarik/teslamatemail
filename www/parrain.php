@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#dc2626">
-  <title>Parrainage Tesla - TeslaMate Mobile</title>
+  <title>Parrainage Tesla - TeslaMate Mail</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white min-h-screen">
@@ -44,7 +44,7 @@
           <h2 class="text-2xl font-bold text-white">Vous aimez ce projet ?</h2>
         </div>
         <p class="text-gray-300 text-base leading-relaxed mb-4">
-          Si cette interface TeslaMate Mobile vous plaît et qu'elle vous facilite la vie au quotidien, vous pouvez me soutenir d'une manière simple et avantageuse pour vous !
+          Si cette interface TeslaMate Mail vous plaît et qu'elle vous facilite la vie au quotidien, vous pouvez me soutenir d'une manière simple et avantageuse pour vous !
         </p>
         <p class="text-gray-300 text-base leading-relaxed">
           Si vous envisagez d'acheter un véhicule Tesla ou des produits Tesla (Powerwall, accessoires...), n'hésitez pas à utiliser mon lien de parrainage. Cela ne vous coûte rien et nous permet tous les deux de bénéficier d'avantages !
@@ -112,7 +112,7 @@
           <h2 class="text-xl font-bold text-white">Merci !</h2>
         </div>
         <p class="text-gray-300 text-sm leading-relaxed">
-          Que vous utilisiez ou non le lien de parrainage, merci d'utiliser TeslaMate Mobile ! Votre soutien, sous quelque forme que ce soit, est grandement apprécié et me motive à continuer d'améliorer cette interface.
+          Que vous utilisiez ou non le lien de parrainage, merci d'utiliser TeslaMate Mail ! Votre soutien, sous quelque forme que ce soit, est grandement apprécié et me motive à continuer d'améliorer cette interface.
         </p>
         <p class="text-gray-400 text-xs mt-4 italic">
           — Eric B. / Monwifi.fr
