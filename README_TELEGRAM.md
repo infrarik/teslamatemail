@@ -14,6 +14,9 @@ Cette configuration permet d'envoyer des notifications Telegram depuis votre ins
    - Choisissez un nom pour votre bot (ex: "TeslaMate Notifications")
    - Choisissez un username (doit finir par "bot", ex: "teslamate_notif_bot")
 4. **Copiez le token** fourni (format: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+5. Cherchez le Bot que vous venez de créer et envoyez lui la commande de
+   démarrage : /start
+   Sans cette commande, il ne pourra pas être utilisé !!
 
 ### 2. Obtenir votre Chat ID
 
