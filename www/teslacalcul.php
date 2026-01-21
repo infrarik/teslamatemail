@@ -47,6 +47,12 @@ $texts = [
         'cost_label' => "Coût",
         'print_btn' => "Imprimer / PDF",
         'sent_to' => "Envoyé à",
+        'period_week' => "Cette semaine",
+        'period_last_week' => "Semaine dernière",
+        'period_month' => "Ce mois",
+        'period_last_month' => "Mois dernier",
+        'period_year' => "Cette année",
+        'period_custom' => "Période personnalisée",
         'cols' => ['date'=>'Date','kwh'=>'kWh chargés','cost'=>'Coût','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
     ],
     'en' => [
@@ -76,6 +82,12 @@ $texts = [
         'cost_label' => "Cost",
         'print_btn' => "Print / PDF",
         'sent_to' => "Sent to",
+        'period_week' => "This week",
+        'period_last_week' => "Last week",
+        'period_month' => "This month",
+        'period_last_month' => "Last month",
+        'period_year' => "This year",
+        'period_custom' => "Custom period",
         'cols' => ['date'=>'Date','kwh'=>'kWh charged','cost'=>'Cost','duree'=>'Duration','km'=>'km driven','ville'=>'City','gps'=>'GPS']
     ]
 ];
@@ -106,8 +118,36 @@ $geofences = $stmt_geo->fetchAll(PDO::FETCH_ASSOC);
 // --- 6. LOGIQUE DE CALCUL ET EXPORT ---
 $resultats = ['nb' => 0, 'total_kwh' => 0, 'total_km' => 0, 'total_cost' => 0];
 $historique_fusionne = [];
+
+// Gestion des périodes rapides
 $date_debut = $_POST['date_debut'] ?? date('Y-m-01');
 $date_fin = $_POST['date_fin'] ?? date('Y-m-d');
+
+if (isset($_POST['quick_period'])) {
+    switch ($_POST['quick_period']) {
+        case 'week':
+            $date_debut = date('Y-m-d', strtotime('monday this week'));
+            $date_fin = date('Y-m-d');
+            break;
+        case 'last_week':
+            $date_debut = date('Y-m-d', strtotime('monday last week'));
+            $date_fin = date('Y-m-d', strtotime('sunday last week'));
+            break;
+        case 'month':
+            $date_debut = date('Y-m-01');
+            $date_fin = date('Y-m-d');
+            break;
+        case 'last_month':
+            $date_debut = date('Y-m-01', strtotime('first day of last month'));
+            $date_fin = date('Y-m-t', strtotime('last day of last month'));
+            break;
+        case 'year':
+            $date_debut = date('Y-01-01');
+            $date_fin = date('Y-m-d');
+            break;
+    }
+}
+
 $kwh_price = floatval($_POST['kwh_price'] ?? 0);
 $selected_car = $_POST['car_id'] ?? ($cars[0]['id'] ?? 1);
 $selected_geo = $_POST['geofence'] ?? 'TOUS';
@@ -123,7 +163,7 @@ foreach ($cars as $car) {
     }
 }
 
-if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST['telecharger_pdf']) || isset($_POST['telecharger_csv'])) {
+if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST['telecharger_pdf']) || isset($_POST['telecharger_csv']) || isset($_POST['quick_period'])) {
     try {
         $params = ['debut' => $date_debut, 'fin' => $date_fin, 'car_id' => $selected_car];
         $where_charge = " WHERE cp.car_id = :car_id AND cp.start_date >= :debut AND cp.start_date < (:fin::date + interval '1 day') AND cp.charge_energy_added > 0";
@@ -179,7 +219,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
     } catch (Exception $e) { die("Erreur : " . $e->getMessage()); }
 
-    // --- EMAIL ---
+    // --- EMAIL / PDF / CSV (identique au précédent pour le calcul des coûts) ---
     if (isset($_POST['envoyer_email']) && !empty($config['NOTIFICATION_EMAIL'])) {
         $to = $config['NOTIFICATION_EMAIL']; 
         $subject = $t['report_title'] . " - $car_name_display - $date_debut / $date_fin";
@@ -196,8 +236,6 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         mail($to, $subject, $body, "From: noreply@teslamate.local");
         $status_message = $t['sent_to'] . " $to";
     }
-
-    // --- PDF ---
     if (isset($_POST['telecharger_pdf'])) {
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
         echo '<h1>'.$t['report_title'].' - '.htmlspecialchars($car_name_display).'</h1>';
@@ -220,8 +258,6 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         echo '</table><br><button onclick="window.print()" style="display:block;margin:auto;padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:5px;cursor:pointer">'.$t['print_btn'].'</button></body></html>';
         exit;
     }
-
-    // --- CSV ---
     if (isset($_POST['telecharger_csv'])) {
         header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="export.csv"');
         $f = fopen('php://output', 'w'); 
@@ -230,13 +266,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         fputcsv($f, $headers, ';');
         foreach($historique_fusionne as $l) {
             $row = [];
-            foreach($cols as $c) {
-                if ($c === 'cost') {
-                    $row[] = ($l['cost'] > 0 ? round($l['cost'], 2) : '');
-                } else {
-                    $row[] = $l[$c] ?? '';
-                }
-            }
+            foreach($cols as $c) $row[] = $l[$c] ?? '';
             fputcsv($f, $row, ';');
         }
         fclose($f); exit;
@@ -257,6 +287,14 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         h1 { margin: 10px 0 30px 0; font-size: 28px; text-align: center; color: #dc2626; }
         label { display: block; font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 8px; margin-top: 15px; }
         input[type="date"], input[type="number"], select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
+        
+        /* Grille des boutons de période rapide */
+        .quick-periods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .btn-period { background: #8a2b2b; border: none; padding: 12px; border-radius: 10px; color: white; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+        .btn-period:hover { background: #dc2626; }
+        .btn-period.active { background: #dc2626; font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
+        .full-width { grid-column: span 2; }
+
         .checkbox-group { background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; display: none; }
         .checkbox-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
         .checkbox-item input { margin-right: 12px; width: 18px; height: 18px; }
@@ -272,6 +310,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         #export_complet:checked ~ .checkbox-group { display: block; }
         .price-input-container { position: relative; }
         .currency-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #999; font-weight: bold; }
+        .dates-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     </style>
 </head>
 <body>
@@ -281,7 +320,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         
         <?php if ($status_message): ?><div class="alert"><?php echo $status_message; ?></div><?php endif; ?>
         
-        <form method="POST">
+        <form method="POST" id="mainForm">
             <label><?php echo $t['lbl_car']; ?></label>
             <select name="car_id">
                 <?php foreach ($cars as $car): ?>
@@ -297,11 +336,26 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                 <?php endforeach; ?>
             </select>
             
-            <label><?php echo $t['lbl_start']; ?></label>
-            <input type="date" name="date_debut" value="<?php echo $date_debut; ?>" required>
-            
-            <label><?php echo $t['lbl_end']; ?></label>
-            <input type="date" name="date_fin" value="<?php echo $date_fin; ?>" required>
+            <label><?php echo $t['period']; ?></label>
+            <div class="quick-periods">
+                <button type="submit" name="quick_period" value="week" class="btn-period"><?php echo $t['period_week']; ?></button>
+                <button type="submit" name="quick_period" value="last_week" class="btn-period"><?php echo $t['period_last_week']; ?></button>
+                <button type="submit" name="quick_period" value="month" class="btn-period"><?php echo $t['period_month']; ?></button>
+                <button type="submit" name="quick_period" value="last_month" class="btn-period"><?php echo $t['period_last_month']; ?></button>
+                <button type="submit" name="quick_period" value="year" class="btn-period"><?php echo $t['period_year']; ?></button>
+                <button type="button" class="btn-period active"><?php echo $t['period_custom']; ?></button>
+            </div>
+
+            <div class="dates-row">
+                <div>
+                    <label><?php echo $t['lbl_start']; ?></label>
+                    <input type="date" name="date_debut" value="<?php echo $date_debut; ?>" required>
+                </div>
+                <div>
+                    <label><?php echo $t['lbl_end']; ?></label>
+                    <input type="date" name="date_fin" value="<?php echo $date_fin; ?>" required>
+                </div>
+            </div>
 
             <label><?php echo $t['lbl_price']; ?> (<?php echo $monnaie; ?>)</label>
             <div class="price-input-container">
