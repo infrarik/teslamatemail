@@ -39,6 +39,8 @@ $trans = [
         'mqtt_topic' => 'Topic de base',
         'email_title' => 'Notifications Email',
         'email_dest' => 'Email de destination',
+        'currency_title' => 'Monnaie',
+        'currency_label' => 'Devise préférée',
         'tg_title' => 'Bot Telegram',
         'tg_token' => 'Token du Bot Telegram',
         'tg_help_title' => '💡 Comment créer un bot Telegram :',
@@ -77,6 +79,8 @@ $trans = [
         'mqtt_topic' => 'Base Topic',
         'email_title' => 'Email Notifications',
         'email_dest' => 'Destination Email',
+        'currency_title' => 'Currency',
+        'currency_label' => 'Preferred Currency',
         'tg_title' => 'Telegram Bot',
         'tg_token' => 'Telegram Bot Token',
         'tg_help_title' => '💡 How to create a Telegram bot:',
@@ -116,6 +120,7 @@ $config = [
     'mqtt_pass' => '',
     'mqtt_topic' => 'teslamate/cars/1',
     'notification_email' => '',
+    'currency' => 'EUR',
     'docker_path' => '',
     'telegram_bot_token' => ''
 ];
@@ -157,6 +162,9 @@ if (isset($_POST['add_telegram_user'])) {
         exit;
     }
 }
+
+// Liste des monnaies
+$currencies = ["EUR", "GBP", "USD", "CHF", "CAD", "AUD", "JPY", "CNY", "NOK", "SEK", "DKK"];
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -231,6 +239,21 @@ if (isset($_POST['add_telegram_user'])) {
         <div class="space-y-2">
           <label class="text-sm text-gray-400 ml-1"><?= $t['email_dest'] ?></label>
           <input type="email" id="notification_email" name="notification_email" value="<?= htmlspecialchars($config['notification_email']); ?>" required class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-white">
+        </div>
+      </div>
+
+      <div class="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="p-2 bg-emerald-500/20 rounded-lg"><svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+          <h2 class="text-xl font-semibold"><?= $t['currency_title'] ?></h2>
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm text-gray-400 ml-1"><?= $t['currency_label'] ?></label>
+          <select name="currency" class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all text-white">
+            <?php foreach ($currencies as $c): ?>
+                <option value="<?= $c ?>" <?= ($config['currency'] === $c) ? 'selected' : '' ?>><?= $c ?></option>
+            <?php endforeach; ?>
+          </select>
         </div>
       </div>
 

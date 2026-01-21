@@ -5,12 +5,12 @@ $config_file = 'cgi-bin/setup';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // --- ÉTAPE A : LIRE LES VALEURS ACTUELLES DE SÉCURITÉ ---
-    $protected_keys = ['email_enabled', 'telegram_enabled', 'mqtt_enabled'];
+    $protected_keys = ['email_enabled', 'telegram_enabled', 'mqtt_enabled', 'language'];
     $current_protected_values = [];
     
     // Valeurs par défaut si le fichier n'existe pas encore
     foreach ($protected_keys as $key) {
-        $current_protected_values[$key] = 'false';
+        $current_protected_values[$key] = ($key === 'language') ? 'fr' : 'false';
     }
 
     if (file_exists($config_file)) {
@@ -36,12 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'mqtt_pass'          => $_POST['mqtt_pass'] ?? '',
         'mqtt_topic'         => $_POST['mqtt_topic'] ?? '',
         'notification_email' => $_POST['notification_email'] ?? '',
+        'currency'           => $_POST['currency'] ?? 'EUR',
         'telegram_bot_token' => $_POST['telegram_bot_token'] ?? '',
         'docker_path'        => $_POST['docker_path'] ?? ''
     ];
 
     // --- ÉTAPE C : FUSIONNER AVEC LES VALEURS PROTÉGÉES ---
-    // On injecte les valeurs lues à l'étape A pour qu'elles ne soient pas perdues
+    // On injecte les valeurs lues à l'étape A pour qu'elles ne soient pas perdues (incluant la langue)
     foreach ($current_protected_values as $key => $val) {
         $new_config[$key] = $val;
     }
@@ -64,4 +65,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: teslaconf.php');
     exit;
 }
-

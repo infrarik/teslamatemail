@@ -1,7 +1,7 @@
 <?php
 // --- 1. LECTURE DU SETUP ---
 $file = 'cgi-bin/setup';
-$config = ['NOTIFICATION_EMAIL' => '', 'DOCKER_PATH' => '', 'LANGUAGE' => 'fr'];
+$config = ['NOTIFICATION_EMAIL' => '', 'DOCKER_PATH' => '', 'LANGUAGE' => 'fr', 'CURRENCY' => 'EUR'];
 
 if (file_exists($file)) {
     $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -16,6 +16,7 @@ if (file_exists($file)) {
 
 // Détection de la langue unique via setup
 $lang = (isset($config['LANGUAGE']) && strtolower($config['LANGUAGE']) === 'en') ? 'en' : 'fr';
+$monnaie = $config['CURRENCY'] ?? 'EUR';
 
 // --- 2. DICTIONNAIRE DE TRADUCTION ---
 $texts = [
@@ -26,12 +27,14 @@ $texts = [
         'all_locations' => "-- TOUS LES LIEUX --",
         'lbl_start' => "Début",
         'lbl_end' => "Fin",
+        'lbl_price' => "Prix du kWh",
         'lbl_details' => "Export complet",
         'lbl_select_all' => "TOUT SÉLECTIONNER",
         'btn_valider' => "VALIDER",
         'res_dist' => "Distance :",
         'res_count' => "Charges :",
         'res_energy' => "Énergie :",
+        'res_cost' => "Coût total :",
         'btn_email' => "ENVOI PAR EMAIL",
         'btn_pdf' => "TÉLÉCHARGER PDF",
         'btn_csv' => "TÉLÉCHARGER CSV",
@@ -41,9 +44,10 @@ $texts = [
         'dist_label' => "Distance",
         'charges_label' => "Charges",
         'energy_label' => "Énergie",
+        'cost_label' => "Coût",
         'print_btn' => "Imprimer / PDF",
         'sent_to' => "Envoyé à",
-        'cols' => ['date'=>'Date','kwh'=>'kWh chargés','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
+        'cols' => ['date'=>'Date','kwh'=>'kWh chargés','cost'=>'Coût','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
     ],
     'en' => [
         'title' => "Consumption",
@@ -52,12 +56,14 @@ $texts = [
         'all_locations' => "-- ALL LOCATIONS --",
         'lbl_start' => "Start",
         'lbl_end' => "End",
+        'lbl_price' => "kWh Price",
         'lbl_details' => "Detailed Export",
         'lbl_select_all' => "SELECT ALL",
         'btn_valider' => "CALCULATE",
         'res_dist' => "Distance:",
         'res_count' => "Charges:",
         'res_energy' => "Energy:",
+        'res_cost' => "Total Cost:",
         'btn_email' => "SEND BY EMAIL",
         'btn_pdf' => "DOWNLOAD PDF",
         'btn_csv' => "DOWNLOAD CSV",
@@ -67,9 +73,10 @@ $texts = [
         'dist_label' => "Distance",
         'charges_label' => "Charges",
         'energy_label' => "Energy",
+        'cost_label' => "Cost",
         'print_btn' => "Print / PDF",
         'sent_to' => "Sent to",
-        'cols' => ['date'=>'Date','kwh'=>'kWh charged','duree'=>'Duration','km'=>'km driven','ville'=>'City','gps'=>'GPS']
+        'cols' => ['date'=>'Date','kwh'=>'kWh charged','cost'=>'Cost','duree'=>'Duration','km'=>'km driven','ville'=>'City','gps'=>'GPS']
     ]
 ];
 $t = $texts[$lang];
@@ -97,14 +104,15 @@ $stmt_geo = $pdo->query("SELECT id, name FROM geofences ORDER BY name ASC");
 $geofences = $stmt_geo->fetchAll(PDO::FETCH_ASSOC);
 
 // --- 6. LOGIQUE DE CALCUL ET EXPORT ---
-$resultats = ['nb' => 0, 'total_kwh' => 0, 'total_km' => 0];
+$resultats = ['nb' => 0, 'total_kwh' => 0, 'total_km' => 0, 'total_cost' => 0];
 $historique_fusionne = [];
 $date_debut = $_POST['date_debut'] ?? date('Y-m-01');
 $date_fin = $_POST['date_fin'] ?? date('Y-m-d');
+$kwh_price = floatval($_POST['kwh_price'] ?? 0);
 $selected_car = $_POST['car_id'] ?? ($cars[0]['id'] ?? 1);
 $selected_geo = $_POST['geofence'] ?? 'TOUS';
 $export_complet = isset($_POST['export_complet']) ? 1 : 0;
-$cols = $_POST['cols'] ?? ['date', 'kwh', 'duree', 'km', 'ville', 'gps'];
+$cols = $_POST['cols'] ?? ['date', 'kwh', 'cost', 'duree', 'km', 'ville', 'gps'];
 $status_message = "";
 
 $car_name_display = "Vehicle";
@@ -145,14 +153,15 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
         foreach ($charges_par_jour as $c) {
             $d = $c['date_f'];
-            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'duree' => $c['duree'], 'km' => 0, 'ville' => $c['ville'], 'gps' => round($c['lat'],5).','.round($c['lon'],5)];
+            $cost_day = $c['kwh'] * $kwh_price;
+            $temp_hist[$d] = ['date' => $d, 'kwh' => $c['kwh'], 'cost' => $cost_day, 'duree' => $c['duree'], 'km' => 0, 'ville' => $c['ville'], 'gps' => round($c['lat'],5).','.round($c['lon'],5)];
             $total_kwh_accumule += $c['kwh'];
             if ($c['kwh'] > 0) $compteur_jours_charge++;
         }
         foreach ($trajets_par_jour as $trajet) {
             $d = $trajet['date_f'];
             if (!isset($temp_hist[$d])) {
-                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'duree' => $trajet['duree'], 'km' => $trajet['km'], 'ville' => '', 'gps' => ''];
+                $temp_hist[$d] = ['date' => $d, 'kwh' => 0, 'cost' => 0, 'duree' => $trajet['duree'], 'km' => $trajet['km'], 'ville' => '', 'gps' => ''];
             } else {
                 $temp_hist[$d]['km'] += $trajet['km'];
                 $temp_hist[$d]['duree'] += $trajet['duree'];
@@ -161,7 +170,12 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         }
         ksort($temp_hist);
         $historique_fusionne = $temp_hist;
-        $resultats = ['nb' => $compteur_jours_charge, 'total_kwh' => round($total_kwh_accumule, 2), 'total_km' => round($total_km_accumule, 1)];
+        $resultats = [
+            'nb' => $compteur_jours_charge, 
+            'total_kwh' => round($total_kwh_accumule, 2), 
+            'total_km' => round($total_km_accumule, 1),
+            'total_cost' => round($total_kwh_accumule * $kwh_price, 2)
+        ];
 
     } catch (Exception $e) { die("Erreur : " . $e->getMessage()); }
 
@@ -170,13 +184,13 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $to = $config['NOTIFICATION_EMAIL']; 
         $subject = $t['report_title'] . " - $car_name_display - $date_debut / $date_fin";
         $body = $t['car'] . " : $car_name_display\n";
-        $body .= $t['dist_label'] . " : ".$resultats['total_km']." km | ".$t['energy_label'] . " : ".$resultats['total_kwh']." kWh | ".$t['charges_label'] . " : ".$resultats['nb']."\n\nDétails :\n";
+        $body .= $t['dist_label'] . " : ".$resultats['total_km']." km | ".$t['energy_label'] . " : ".$resultats['total_kwh']." kWh | ".$t['cost_label'] . " : ".$resultats['total_cost']." $monnaie\n\nDétails :\n";
         foreach ($historique_fusionne as $l) {
             $line = [];
             if(in_array('date', $cols)) $line[] = date('d/m/Y', strtotime($l['date']));
             if(in_array('kwh', $cols)) $line[] = ($l['kwh']>0 ? round($l['kwh'],2).' kWh' : '');
+            if(in_array('cost', $cols)) $line[] = ($l['cost']>0 ? round($l['cost'],2).' '.$monnaie : '');
             if(in_array('km', $cols)) $line[] = ($l['km']>0 ? round($l['km'],1).' km' : '');
-            if(in_array('ville', $cols)) $line[] = $l['ville'];
             $body .= implode(' | ', array_filter($line)) . "\n";
         }
         mail($to, $subject, $body, "From: noreply@teslamate.local");
@@ -188,7 +202,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
         echo '<h1>'.$t['report_title'].' - '.htmlspecialchars($car_name_display).'</h1>';
         echo '<p style="text-align:center">'.$t['period'].' : '.$date_debut.' au '.$date_fin.'</p>';
-        echo '<div style="margin-bottom:20px;text-align:center"><strong>'.$t['dist_label'].' :</strong> '.$resultats['total_km'].' km | <strong>'.$t['charges_label'].' :</strong> '.$resultats['nb'].' | <strong>'.$t['energy_label'].' :</strong> '.$resultats['total_kwh'].' kWh</div>';
+        echo '<div style="margin-bottom:20px;text-align:center"><strong>'.$t['dist_label'].' :</strong> '.$resultats['total_km'].' km | <strong>'.$t['energy_label'].' :</strong> '.$resultats['total_kwh'].' kWh | <strong>'.$t['cost_label'].' :</strong> '.$resultats['total_cost'].' '.$monnaie.'</div>';
         echo '<table><tr>';
         foreach($cols as $c) echo "<th>".$t['cols'][$c]."</th>";
         echo '</tr>';
@@ -196,6 +210,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
             echo '<tr>';
             if(in_array('date', $cols)) echo '<td>'.date('d/m/Y', strtotime($l['date'])).'</td>';
             if(in_array('kwh', $cols)) echo '<td>'.($l['kwh']>0?round($l['kwh'],2):'').'</td>';
+            if(in_array('cost', $cols)) echo '<td>'.($l['cost']>0?round($l['cost'],2):'').'</td>';
             if(in_array('duree', $cols)) echo '<td>'.round($l['duree']).' min</td>';
             if(in_array('km', $cols)) echo '<td>'.($l['km']>0?round($l['km'],1):'').'</td>';
             if(in_array('ville', $cols)) echo '<td>'.htmlspecialchars($l['ville']).'</td>';
@@ -215,7 +230,13 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         fputcsv($f, $headers, ';');
         foreach($historique_fusionne as $l) {
             $row = [];
-            foreach($cols as $c) $row[] = $l[$c] ?? '';
+            foreach($cols as $c) {
+                if ($c === 'cost') {
+                    $row[] = ($l['cost'] > 0 ? round($l['cost'], 2) : '');
+                } else {
+                    $row[] = $l[$c] ?? '';
+                }
+            }
             fputcsv($f, $row, ';');
         }
         fclose($f); exit;
@@ -235,7 +256,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         .back-button svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 2; fill: none; }
         h1 { margin: 10px 0 30px 0; font-size: 28px; text-align: center; color: #dc2626; }
         label { display: block; font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 8px; margin-top: 15px; }
-        input[type="date"], select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
+        input[type="date"], input[type="number"], select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
         .checkbox-group { background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; display: none; }
         .checkbox-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
         .checkbox-item input { margin-right: 12px; width: 18px; height: 18px; }
@@ -249,6 +270,8 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         .result-value { font-weight: bold; color: #4ade80; }
         .alert { padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         #export_complet:checked ~ .checkbox-group { display: block; }
+        .price-input-container { position: relative; }
+        .currency-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #999; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -276,8 +299,15 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
             
             <label><?php echo $t['lbl_start']; ?></label>
             <input type="date" name="date_debut" value="<?php echo $date_debut; ?>" required>
+            
             <label><?php echo $t['lbl_end']; ?></label>
             <input type="date" name="date_fin" value="<?php echo $date_fin; ?>" required>
+
+            <label><?php echo $t['lbl_price']; ?> (<?php echo $monnaie; ?>)</label>
+            <div class="price-input-container">
+                <input type="number" name="kwh_price" step="0.0001" value="<?php echo $kwh_price; ?>" placeholder="0.0000">
+                <span class="currency-badge"><?php echo $monnaie; ?></span>
+            </div>
             
             <div style="margin-top:20px;">
                 <input type="checkbox" id="export_complet" name="export_complet" <?php if($export_complet) echo 'checked'; ?>>
@@ -298,6 +328,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                     <div class="result-item"><span><?php echo $t['res_dist']; ?></span><span class="result-value"><?php echo $resultats['total_km']; ?> km</span></div>
                     <div class="result-item"><span><?php echo $t['res_count']; ?></span><span class="result-value"><?php echo $resultats['nb']; ?></span></div>
                     <div class="result-item"><span><?php echo $t['res_energy']; ?></span><span class="result-value"><?php echo $resultats['total_kwh']; ?> kWh</span></div>
+                    <div class="result-item"><span><?php echo $t['res_cost']; ?></span><span class="result-value"><?php echo $resultats['total_cost']; ?> <?php echo $monnaie; ?></span></div>
                 </div>
                 
                 <?php if (!empty($config['NOTIFICATION_EMAIL'])): ?>
