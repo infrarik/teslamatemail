@@ -92,6 +92,12 @@ En cas de soucis, pensez à vérifier :
 Si ce développement GNU gratuit vous plait, n'hésitez pas à utiliser le lien de parraiange Tesla figurant en bas de la page principale,
 c'est toujours un coup de pouce utile pour poursuivre et faire évoluer. Un grand merci par avance !
 
+## Remerciements 
+Immense merci à Jérôme Y. pour l'aide apportée au débogage, pour les idées de nouvelles fonctionnalités.
+Merci également au groupe FB Tesla Model Y - France et le nombre important de réactions positives.
+Mention spéciale au refus du Tesla Owner Club de France sur FB pour le refus de plusieurs publications annonçant
+ce développement pourtant totalement gratuit : on n'est jamais mieux qu'entre gens bons, longue vie à l'entre soi :-)
+
 
 ===============================================================================
 
