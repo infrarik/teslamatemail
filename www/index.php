@@ -1,11 +1,28 @@
+<?php
+// --- CONFIGURATION ---
+$setupFile = 'cgi-bin/setup';
+$accessCode = null;
+
+if (file_exists($setupFile)) {
+    $lines = file($setupFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, 'code=') === 0) {
+            $parts = explode('=', $line);
+            if (isset($parts[1]) && trim($parts[1]) !== '') {
+                $accessCode = trim($parts[1]);
+            }
+            break;
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TESLAMATE-MAIL</title>
     <style>
-        /* Design Premium - Fond Noir */
         body {
             background-color: #000000;
             color: #ffffff;
@@ -14,95 +31,197 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100dvh;
             margin: 0;
-            text-align: center;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden; /* Empêche le scroll parasite */
         }
 
         .container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px; /* Espace réduit pour rapprocher le titre et le copyright */
-        }
-
-        /* Style du lien autour du logo */
-        .logo-link {
-            text-decoration: none;
-            outline: none;
-            margin-bottom: 10px;
+            width: 100%;
+            max-width: 350px;
+            gap: 5px;
         }
 
         .logo {
-            max-width: 280px;
+            max-width: 140px; /* Réduction drastique pour libérer de l'espace */
             height: auto;
-            /* Le mode 'screen' rend le noir de l'image transparent */
             mix-blend-mode: screen;
             filter: brightness(1.1) contrast(1.1);
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-
-        .logo:hover {
-            transform: scale(1.02);
         }
 
         h1 {
-            font-size: 2.8rem;
-            letter-spacing: 5px;
-            margin: 10px 0 0 0; /* Pas de marge en bas pour coller le copyright */
+            font-size: 1.4rem; /* Plus petit pour mobile */
+            letter-spacing: 2px;
+            margin: 5px 0;
             font-weight: 900;
             text-transform: uppercase;
         }
 
         .copyright {
-            font-size: 0.8rem;
-            color: #888888; /* Gris discret */
-            margin-bottom: 40px; /* Espace avant le bouton */
-            letter-spacing: 1px;
+            font-size: 0.65rem;
+            color: #666;
+            margin-bottom: 10px;
         }
 
-        /* Style du Bouton Vert */
+        /* Clavier Numérique */
+        #pincode-container {
+            display: <?php echo $accessCode ? 'flex' : 'none'; ?>;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .dots {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border: 2px solid #2e7d32;
+            border-radius: 50%;
+        }
+
+        .dot.active {
+            background-color: #2e7d32;
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 10px;
+        }
+
+        .num-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 1px solid #333;
+            background: #111;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .num-btn:active {
+            background: #2e7d32;
+        }
+
+        .error-msg {
+            color: #ff5252;
+            margin-top: 8px;
+            height: 15px;
+            font-size: 0.75rem;
+            visibility: hidden;
+        }
+
         .btn-entree {
             background-color: #2e7d32; 
             color: white;
-            padding: 18px 65px;
-            font-size: 1.3rem;
+            padding: 15px 50px;
+            font-size: 1.1rem;
             font-weight: bold;
             text-decoration: none;
-            border: none;
             border-radius: 5px;
-            cursor: pointer;
-            display: inline-block;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             text-transform: uppercase;
         }
 
-        .btn-entree:hover {
-            background-color: #388e3c;
-            transform: scale(1.03);
-            box-shadow: 0 6px 20px rgba(46, 125, 50, 0.3);
-        }
-
-        .btn-entree:active {
-            transform: scale(0.98);
+        /* Ajustements pour écrans très courts */
+        @media (max-height: 600px) {
+            .logo { max-width: 100px; }
+            h1 { font-size: 1.1rem; margin: 2px 0; }
+            .num-btn { width: 50px; height: 50px; font-size: 1.1rem; }
+            .numpad { gap: 8px; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <a href="tesla.php" class="logo-link">
-            <img src="logoteslamatemail.png" alt="Logo Teslamate Mail" class="logo">
-        </a>
+        <div class="logo-link">
+            <img src="logoteslamatemail.png" alt="Logo" class="logo">
+        </div>
         
         <h1>TESLAMATE-MAIL</h1>
-        
         <div class="copyright">© monwifi.fr 2026</div>
-        
-        <a href="tesla.php" class="btn-entree">ENTREE</a>
+
+        <?php if (!$accessCode): ?>
+            <a href="tesla.php" class="btn-entree">ENTREE</a>
+        <?php else: ?>
+            <div id="pincode-container">
+                <div class="dots">
+                    <div id="dot-1" class="dot"></div>
+                    <div id="dot-2" class="dot"></div>
+                    <div id="dot-3" class="dot"></div>
+                    <div id="dot-4" class="dot"></div>
+                </div>
+
+                <div class="numpad">
+                    <button class="num-btn" onclick="press('1')">1</button>
+                    <button class="num-btn" onclick="press('2')">2</button>
+                    <button class="num-btn" onclick="press('3')">3</button>
+                    <button class="num-btn" onclick="press('4')">4</button>
+                    <button class="num-btn" onclick="press('5')">5</button>
+                    <button class="num-btn" onclick="press('6')">6</button>
+                    <button class="num-btn" onclick="press('7')">7</button>
+                    <button class="num-btn" onclick="press('8')">8</button>
+                    <button class="num-btn" onclick="press('9')">9</button>
+                    <button class="num-btn" onclick="clearPin()">C</button>
+                    <button class="num-btn" onclick="press('0')">0</button>
+                    <button class="num-btn" style="font-size: 0.8rem;" onclick="checkPin()">OK</button>
+                </div>
+                <div id="error" class="error-msg">Code incorrect</div>
+            </div>
+        <?php endif; ?>
     </div>
 
+    <script>
+        const correctCode = "<?php echo $accessCode; ?>";
+        let currentInput = "";
+
+        function press(num) {
+            if (currentInput.length < 4) {
+                currentInput += num;
+                updateDots();
+                document.getElementById('error').style.visibility = 'hidden';
+                if (currentInput.length === 4) setTimeout(checkPin, 250);
+            }
+        }
+
+        function updateDots() {
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById('dot-' + i);
+                dot.classList.toggle('active', i <= currentInput.length);
+            }
+        }
+
+        function clearPin() {
+            currentInput = "";
+            updateDots();
+            document.getElementById('error').style.visibility = 'hidden';
+        }
+
+        function checkPin() {
+            if (currentInput === correctCode) {
+                window.location.href = "tesla.php";
+            } else {
+                document.getElementById('error').style.visibility = 'visible';
+                currentInput = "";
+                setTimeout(updateDots, 300);
+            }
+        }
+    </script>
 </body>
 </html>
+
