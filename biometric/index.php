@@ -15,7 +15,7 @@ if (file_exists($setupFile)) {
 }
 
 if (isset($_SESSION['authorized'])) {
-    header('Location: testla.php');
+    header('Location: tesla.php');
     exit;
 }
 ?>
@@ -97,7 +97,7 @@ if (isset($_SESSION['authorized'])) {
                             await registerBiometry();
                         }
                     }
-                    window.location.href = "testla.php";
+                    window.location.href = "tesla.php";
                 } else {
                     document.getElementById('err').style.visibility = 'visible';
                     clearPin();
@@ -134,7 +134,7 @@ if (isset($_SESSION['authorized'])) {
                 if (assertion) {
                     const res = await fetch("auth.php?bypass=true");
                     const data = await res.json();
-                    if (data.success) window.location.href = "testla.php";
+                    if (data.success) window.location.href = "tesla.php";
                 }
             } catch (e) { alert("Échec biométrie"); }
         }
