@@ -15,14 +15,9 @@ this is just a test.
 ## Testing
 
 If you intend to test on all .php files, please add this at the very begining of these files :
-<?php
-session_start();
 
-// VERROU DE SÉCURITÉ
-if (!isset($_SESSION['authorized']) || $_SESSION['authorized'] !== true) {
-    header('Location: index.php');
-    exit;
-}
+<?php 
+include('security.php');
 
 // if you reach this, user is authorized///
 // Rest of your PHP code
