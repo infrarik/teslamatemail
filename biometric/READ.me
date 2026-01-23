@@ -1,3 +1,8 @@
 WARNING : this section has not fully tested upgrades
 ## Files here use biometric identification : fingerprint on Android devices, FaceID on iOS devices, Key on MacOS devices
 ## Please use with caution, for test purpose ONLY.
+
+## Use 
+add a line at the end of cgi-bin/setup : code=1234
+Type in your code (1234) on the keyboard when accessing your IP from the internet (VPN is quite mandatory), using httpS only : http won't work !
+You'll then have to decide wether you want to record a biometric ID or not. This choice will be stored, and for your next login you'll have to use this ID login : fingerprint, faceID, etc.
