@@ -228,9 +228,13 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         $status_message = $t['sent_to'] . " $to";
     }
     if (isset($_POST['telecharger_pdf'])) {
+        // Formatage de la date pour l'en-tête selon la langue
+        $display_start = ($lang === 'fr') ? date('d/m/Y', strtotime($date_debut)) : $date_debut;
+        $display_end = ($lang === 'fr') ? date('d/m/Y', strtotime($date_fin)) : $date_fin;
+
         echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:20px} h1{color:#dc2626;text-align:center} table{width:100%;border-collapse:collapse;margin-top:20px} td,th{border:1px solid #ddd;padding:10px;text-align:center;font-size:13px} th{background:#dc2626;color:#fff}</style></head><body>';
         echo '<h1>'.$t['report_title'].' - '.htmlspecialchars($car_name_display).'</h1>';
-        echo '<p style="text-align:center">'.$t['period'].' : '.$date_debut.' au '.$date_fin.'</p>';
+        echo '<p style="text-align:center">'.$t['period'].' : '.$display_start.' au '.$display_end.'</p>';
         echo '<div style="margin-bottom:20px;text-align:center"><strong>'.$t['dist_label'].' :</strong> '.$resultats['total_km'].' km | <strong>'.$t['energy_added_label'].' :</strong> '.$resultats['total_kwh_added'].' kWh | <strong>'.$t['energy_used_label'].' :</strong> '.$resultats['total_kwh_used'].' kWh | <strong>'.$t['cost_label'].' :</strong> '.$resultats['total_cost'].' '.$monnaie.'</div>';
         echo '<table><tr>';
         foreach($cols as $c) echo "<th>".$t['cols'][$c]."</th>";
@@ -263,6 +267,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
             foreach($cols as $c) {
                 if ($c == 'kwh') $row[] = round($l['kwh'],2);
                 elseif ($c == 'kwh_used') $row[] = round($l['kwh_used'],2);
+                elseif ($c == 'date' && $lang === 'fr') $row[] = date('d/m/Y', strtotime($l['date']));
                 else $row[] = $l[$c] ?? '';
             }
             fputcsv($f, $row, ';');
