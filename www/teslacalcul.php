@@ -54,7 +54,9 @@ $texts = [
         'period_month' => "Ce mois",
         'period_last_month' => "Mois dernier",
         'period_year' => "Cette année",
+        'period_last_year' => "Année précédente",
         'period_custom' => "Période personnalisée",
+        'no_data' => "Pas de données disponibles",
         'cols' => ['date'=>'Date','kwh'=>'kWh ajoutés','kwh_used'=>'kWh consommés','cost'=>'Coût','duree'=>'Durée de charge','km'=>'km parcourus','ville'=>'Ville','gps'=>'GPS']
     ],
     'en' => [
@@ -91,7 +93,9 @@ $texts = [
         'period_month' => "This month",
         'period_last_month' => "Last month",
         'period_year' => "This year",
+        'period_last_year' => "Last year",
         'period_custom' => "Custom period",
+        'no_data' => "No data available",
         'cols' => ['date'=>'Date','kwh'=>'kWh added','kwh_used'=>'kWh used','cost'=>'Cost','duree'=>'Duration','km'=>'km driven','ville'=>'City','gps'=>'GPS']
     ]
 ];
@@ -133,6 +137,7 @@ if (isset($_POST['quick_period'])) {
         case 'month': $date_debut = date('Y-m-01'); $date_fin = date('Y-m-d'); break;
         case 'last_month': $date_debut = date('Y-m-01', strtotime('first day of last month')); $date_fin = date('Y-m-t', strtotime('last day of last month')); break;
         case 'year': $date_debut = date('Y-01-01'); $date_fin = date('Y-m-d'); break;
+        case 'last_year': $date_debut = date('Y-01-01', strtotime('first day of january last year')); $date_fin = date('Y-12-31', strtotime('last day of december last year')); break;
     }
 }
 
@@ -157,8 +162,8 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
 
         $sql_rec = "SELECT cp.start_date::date as date_f, SUM(cp.charge_energy_added) as kwh, SUM(cp.charge_energy_used) as kwh_used, SUM(EXTRACT(EPOCH FROM (cp.end_date - cp.start_date))/60) as duree, MAX(p.latitude) as lat, MAX(p.longitude) as lon, MAX(a.city) as ville
                     FROM charging_processes cp 
-                    LEFT JOIN addresses a ON a.id = cp.address_id
-                    LEFT JOIN positions p ON p.id = a.id
+                    LEFT JOIN addresses a ON cp.address_id = a.id
+                    LEFT JOIN positions p ON cp.position_id = p.id
                     " . $where_charge . " GROUP BY cp.start_date::date";
         $stmt_rec = $pdo->prepare($sql_rec);
         $stmt_rec->execute($params);
@@ -231,6 +236,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         foreach($cols as $c) echo "<th>".$t['cols'][$c]."</th>";
         echo '</tr>';
         foreach ($historique_fusionne as $l) {
+            if ($l['kwh'] == 0 && $l['kwh_used'] == 0) continue;
             echo '<tr>';
             if(in_array('date', $cols)) echo '<td>'.date('d/m/Y', strtotime($l['date'])).'</td>';
             if(in_array('kwh', $cols)) echo '<td>'.($l['kwh']>0?round($l['kwh'],2):'').'</td>';
@@ -252,6 +258,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         foreach($cols as $c) $headers[] = $t['cols'][$c];
         fputcsv($f, $headers, ';');
         foreach($historique_fusionne as $l) {
+            if ($l['kwh'] == 0 && $l['kwh_used'] == 0) continue;
             $row = [];
             foreach($cols as $c) {
                 if ($c == 'kwh') $row[] = round($l['kwh'],2);
@@ -278,7 +285,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
         h1 { margin: 10px 0 30px 0; font-size: 28px; text-align: center; color: #dc2626; }
         label { display: block; font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 8px; margin-top: 15px; }
         input[type="date"], input[type="number"], select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px; box-sizing: border-box; }
-        .quick-periods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .quick-periods { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
         .btn-period { background: #8a2b2b; border: none; padding: 12px; border-radius: 10px; color: white; font-size: 14px; cursor: pointer; transition: background 0.2s; }
         .btn-period:hover { background: #dc2626; }
         .btn-period.active { background: #dc2626; font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
@@ -317,6 +324,7 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                 <button type="submit" name="quick_period" value="month" class="btn-period"><?php echo $t['period_month']; ?></button>
                 <button type="submit" name="quick_period" value="last_month" class="btn-period"><?php echo $t['period_last_month']; ?></button>
                 <button type="submit" name="quick_period" value="year" class="btn-period"><?php echo $t['period_year']; ?></button>
+                <button type="submit" name="quick_period" value="last_year" class="btn-period"><?php echo $t['period_last_year']; ?></button>
                 <button type="button" class="btn-period active"><?php echo $t['period_custom']; ?></button>
             </div>
             <div class="dates-row">
@@ -336,17 +344,23 @@ if (isset($_POST['calculer']) || isset($_POST['envoyer_email']) || isset($_POST[
                 </div>
             </div>
             <button type="submit" name="calculer" class="btn btn-calc"><?php echo $t['btn_valider']; ?></button>
-            <?php if ($resultats['total_km'] > 0 || $resultats['total_kwh_added'] > 0): ?>
-                <div class="result-box">
-                    <div class="result-item"><span><?php echo $t['res_dist']; ?></span><span class="result-value"><?php echo $resultats['total_km']; ?> km</span></div>
-                    <div class="result-item"><span><?php echo $t['res_count']; ?></span><span class="result-value"><?php echo $resultats['nb']; ?></span></div>
-                    <div class="result-item"><span><?php echo $t['res_energy_added']; ?></span><span class="result-value"><?php echo $resultats['total_kwh_added']; ?> kWh</span></div>
-                    <div class="result-item"><span><?php echo $t['res_energy_used']; ?></span><span class="result-value"><?php echo $resultats['total_kwh_used']; ?> kWh</span></div>
-                    <div class="result-item"><span><?php echo $t['res_cost']; ?></span><span class="result-value"><?php echo $resultats['total_cost']; ?> <?php echo $monnaie; ?></span></div>
-                </div>
-                <?php if (!empty($config['NOTIFICATION_EMAIL'])): ?><button type="submit" name="envoyer_email" class="btn btn-mail"><?php echo $t['btn_email']; ?></button><?php endif; ?>
-                <button type="submit" name="telecharger_pdf" class="btn btn-pdf" formtarget="_blank"><?php echo $t['btn_pdf']; ?></button>
-                <button type="submit" name="telecharger_csv" class="btn btn-csv"><?php echo $t['btn_csv']; ?></button>
+            <?php if (isset($_POST['calculer']) || isset($_POST['quick_period'])): ?>
+                <?php if ($resultats['total_kwh_added'] > 0 || $resultats['nb'] > 0): ?>
+                    <div class="result-box">
+                        <div class="result-item"><span><?php echo $t['res_dist']; ?></span><span class="result-value"><?php echo $resultats['total_km']; ?> km</span></div>
+                        <div class="result-item"><span><?php echo $t['res_count']; ?></span><span class="result-value"><?php echo $resultats['nb']; ?></span></div>
+                        <div class="result-item"><span><?php echo $t['res_energy_added']; ?></span><span class="result-value"><?php echo $resultats['total_kwh_added']; ?> kWh</span></div>
+                        <div class="result-item"><span><?php echo $t['res_energy_used']; ?></span><span class="result-value"><?php echo $resultats['total_kwh_used']; ?> kWh</span></div>
+                        <div class="result-item"><span><?php echo $t['res_cost']; ?></span><span class="result-value"><?php echo $resultats['total_cost']; ?> <?php echo $monnaie; ?></span></div>
+                    </div>
+                    <?php if (!empty($config['NOTIFICATION_EMAIL'])): ?><button type="submit" name="envoyer_email" class="btn btn-mail"><?php echo $t['btn_email']; ?></button><?php endif; ?>
+                    <button type="submit" name="telecharger_pdf" class="btn btn-pdf" formtarget="_blank"><?php echo $t['btn_pdf']; ?></button>
+                    <button type="submit" name="telecharger_csv" class="btn btn-csv"><?php echo $t['btn_csv']; ?></button>
+                <?php else: ?>
+                    <div class="alert" style="background: rgba(220, 38, 38, 0.2); color: #fca5a5; margin-top: 20px;">
+                        <?php echo $t['no_data']; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </form>
     </div>
