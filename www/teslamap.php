@@ -67,7 +67,7 @@ if (!empty($config['DOCKER_PATH']) && file_exists($config['DOCKER_PATH'])) {
     if (preg_match('/POSTGRES_DB[:=]\s*(\S+)/', $docker_content, $m)) $db_name = str_replace(['"', "'"], '', trim($m[1]));
 }
 
-// --- LOGIQUE EXPORT KML (Modifiée pour supporter la journée entière) ---
+// --- LOGIQUE EXPORT KML ---
 if (isset($_GET['export_kml'])) {
     try {
         $pdo_k = new PDO("pgsql:host=$server_ip;port=5432;dbname=$db_name", $db_user, $db_pass);
@@ -114,11 +114,10 @@ try {
         $trajets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if ($selected_drive_id) {
-            $stmt_p = $pdo->prepare("SELECT latitude, longitude, elevation, speed, outside_temp FROM positions WHERE drive_id = ? AND latitude IS NOT NULL ORDER BY date ASC");
+            $stmt_p = $pdo->prepare("SELECT latitude, longitude, elevation, speed, outside_temp, drive_id FROM positions WHERE drive_id = ? AND latitude IS NOT NULL ORDER BY date ASC");
             $stmt_p->execute([$selected_drive_id]);
             $positions = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($is_full_day) {
-            // Requête pour TOUS les trajets de la journée
             $stmt_p = $pdo->prepare("SELECT p.latitude, p.longitude, p.elevation, p.speed, p.outside_temp, p.drive_id FROM positions p JOIN drives d ON p.drive_id = d.id WHERE d.car_id = ? AND DATE(d.start_date AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Paris') = ? AND p.latitude IS NOT NULL ORDER BY p.date ASC");
             $stmt_p->execute([$selected_car_id, $selected_date]);
             $positions = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
@@ -245,9 +244,7 @@ try {
     const pos = <?= json_encode($positions) ?>;
     const hoverMarker = L.circleMarker([0,0], {radius: 7, fillOpacity: 0.8, color: '#fff', fillColor: '#dc2626', weight: 2}).addTo(map);
     
-    // Dessin du trajet segment par segment pour gérer les couleurs et tooltips
     for (let i = 0; i < pos.length - 1; i++) {
-        // En mode journée, on ne relie pas les points si le drive_id change (fin d'un trajet, début d'un autre)
         if (pos[i].drive_id !== pos[i+1].drive_id) continue;
 
         let line = L.polyline([[pos[i].latitude, pos[i].longitude],[pos[i+1].latitude, pos[i+1].longitude]], {
@@ -268,11 +265,10 @@ try {
         line.on('mouseout', function() { hoverMarker.closeTooltip(); });
     }
 
-    // Ajuster la vue
     const bounds = L.latLngBounds(pos.map(p => [p.latitude, p.longitude]));
     map.fitBounds(bounds, {padding:[50,50]});
 
-    // Marqueurs de début et de fin (optionnels en mode journée entière, ici on met le premier et le dernier)
+    // MARQUEURS D ET A AUX EXTRÉMITÉS DU JEU DE DONNÉES COMPLET
     L.marker([pos[0].latitude, pos[0].longitude], {
         icon: L.divIcon({className:'custom-marker', html:'<?= $txt['start'] ?>', iconSize:[24,24]})
     }).addTo(map).getElement().style.backgroundColor='#22c55e';
@@ -303,7 +299,6 @@ try {
     }
 
     function renderPlotly() {
-        // En 3D, on sépare aussi les trajets pour éviter les "lignes fantômes" entre deux trajets
         let traces = [];
         let currentX = [], currentY = [], currentZ = [], currentSpeed = [], currentText = [];
         
@@ -320,6 +315,19 @@ try {
             }
         }
         traces.push(createTrace(currentX, currentY, currentZ, currentSpeed, currentText, traces.length === 0));
+
+        // AJOUT DES MARQUEURS D ET A AUX EXTRÉMITÉS DU TRACÉ 3D
+        const endPointsMarker = { 
+            type:'scatter3d', mode:'text+markers', 
+            x:[pos[0].longitude, pos[pos.length-1].longitude], 
+            y:[pos[0].latitude, pos[pos.length-1].latitude], 
+            z:[(pos[0].elevation??0)+10, (pos[pos.length-1].elevation??0)+10], 
+            text:['<?= $txt['start'] ?>','<?= $txt['end'] ?>'], 
+            marker:{size:4, color:['#22c55e','#dc2626']}, 
+            textfont:{color:['#22c55e','#dc2626'], size:14, family:'Arial Black'},
+            hoverinfo: 'none'
+        };
+        traces.push(endPointsMarker);
 
         Plotly.newPlot('plot3d', traces, {
             paper_bgcolor:'#000', margin:{l:0,r:0,b:0,t:0}, showlegend:false,
