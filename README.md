@@ -30,6 +30,13 @@ Pour chaque fin de charge, le programme publie une trame au format JSON :
 ### 📧 Notifications par Email
 * **Fin de charge :** Envoi d'un e-mail récapitulatif indiquant la fin de la session et le nombre de **kWh consommés**.
 
+https://github.com/user-attachments/assets/4b775f8c-1f37-48da-bf2d-899d2c7c9837
+
+### Cartes
+* Visualisation des trajets d'une journée
+* Affichage des vitesses, températures, altitudes, dénivelé maximum, temps, pourcentage départ/arrivée
+* Capture d'écran de la carte 2D, export vidéo du trajet animé
+  
 ---
 
 ## Prérequis
