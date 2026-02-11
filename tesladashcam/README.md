@@ -1,3 +1,7 @@
+Attention : still a work in progress, regular updates coming up soon ;-)
+
+## INTRODUCTION :
+
 An add-on to TMM (TeslaMateMail), allowing the use of your Dashcam videos.
 Select a directory and then display all 4 cameras ("old" models), a map, and a
 movable control bar.
