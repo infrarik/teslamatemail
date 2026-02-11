@@ -17,7 +17,7 @@ You have a floating command bar showing all information :
 
 * blinkers
 * breaks light
-* AP on/off
+* Auto Pilot on/off
 * Gear : P, N, D, R
 * Speed in universal km/h unit
 * a progress bar
