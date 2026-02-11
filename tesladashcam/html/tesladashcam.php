@@ -97,6 +97,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'process_tesla_data') {
                     $lat = floatval($fields[10]); 
                     $lon = floatval($fields[11]);
                     
+                    // Détecter AUTOSTEER ou TACC comme autopilot actif
+                    $autopilot_state_raw = $fields[9] ?? '';
+                    $autopilot_active = in_array($autopilot_state_raw, ['AUTOSTEER', 'TACC']);
+                    
                     $allGPS[] = [
                         'lat' => $lat, 
                         'lon' => $lon, 
@@ -109,10 +113,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'process_tesla_data') {
                         'blinker_left' => ($fields[6] ?? '') === 'True',
                         'blinker_right' => ($fields[7] ?? '') === 'True',
                         'brake' => ($fields[8] ?? '') === 'True',
-                        'autopilot' => ($fields[9] ?? '') === 'True',
+                        'autopilot' => $autopilot_active,
                         'source_file' => $basename,
                         'gear_state' => $fields[1] ?? '',
-                        'autopilot_state' => ($fields[9] ?? '') === 'True'
+                        'autopilot_state' => $autopilot_active
                     ];
                     $pointsAdded++;
                 }
@@ -433,7 +437,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_data') {
         <!-- Deuxième ligne : Autopilot et Gear -->
         <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 12px; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <div id="autopilot-indicator" class="indicator" style="font-size: 30px; opacity: 0.2; transition: all 0.3s; filter: grayscale(100%);">🤖</div>
+                <div id="autopilot-indicator" class="indicator" style="opacity: 0.2; transition: all 0.3s;">
+                    <svg width="30" height="30" viewBox="0 0 100 100" style="filter: grayscale(100%);">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8"/>
+                        <circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="6"/>
+                        <line x1="50" y1="50" x2="50" y2="15" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                        <line x1="20" y1="35" x2="35" y2="45" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                        <line x1="80" y1="35" x2="65" y2="45" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                    </svg>
+                </div>
                 <span style="font-size: 11px; color: #888;">AUTO</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -682,12 +694,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_data') {
             
             // Mise à jour de l'Autopilot
             const autopilotIndicator = document.getElementById('autopilot-indicator');
+            const autopilotSvg = autopilotIndicator.querySelector('svg');
+            
             if (gpsPoints[idx].autopilot_state) {
                 autopilotIndicator.style.opacity = '1';
-                autopilotIndicator.style.filter = 'brightness(1.2) hue-rotate(200deg)'; // Bleu
+                autopilotSvg.style.filter = 'none';
+                autopilotSvg.style.color = '#2196F3'; // Bleu Tesla
             } else {
                 autopilotIndicator.style.opacity = '0.2';
-                autopilotIndicator.style.filter = 'grayscale(100%)';
+                autopilotSvg.style.filter = 'grayscale(100%)';
+                autopilotSvg.style.color = '#888';
             }
             
             // Mise à jour du Gear
@@ -883,7 +899,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_data') {
                     el.style.fontSize = (28 * scale) + 'px';
                     el.style.minWidth = (100 * scale) + 'px';
                 } else if (el.id === 'autopilot-indicator') {
-                    el.style.fontSize = (30 * scale) + 'px';
+                    const svg = el.querySelector('svg');
+                    if (svg) {
+                        const size = 30 * scale;
+                        svg.setAttribute('width', size);
+                        svg.setAttribute('height', size);
+                    }
                 } else if (el.id === 'gear-display') {
                     el.style.fontSize = (24 * scale) + 'px';
                     el.style.minWidth = (40 * scale) + 'px';
