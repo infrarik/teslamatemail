@@ -30,3 +30,5 @@ In /var/www/html, copy the new tesla.php front page, tesladashcam.php.
 Add all files in cgi-bin/ too.
 
 I then created a installdashcam.sh script : use "bash installdashcam.sh" and it should install all dependencies you don't have, including Python3 librairies, setting chown and chmod permissions.
+
+In cgi-bin/export.py, you'll find a script which generates uploads/export.mp4, showing ALL information in ONE single video : all four videos, speed, blinkers, etc. Attention : this is a HUGE process, it takes ressources and time to compile, so use a real computer to do this...
