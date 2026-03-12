@@ -205,6 +205,7 @@ try {
 <html lang="<?= $lang ?>">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?= $txt['title'] ?></title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
@@ -271,6 +272,125 @@ try {
         .pause-marker { background: #3b82f6; border: 2px solid #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         .charge-marker { background: #f59e0b; border: 2px solid #fff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 0 10px rgba(245,158,11,0.6); cursor: pointer; }
         .snap-btn { position: absolute; top: 15px; right: 50px; z-index: 1000; padding: 8px 12px; background: rgba(5, 150, 105, 0.85); color: white; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* ===== RESPONSIVE MOBILE / TABLETTE ===== */
+        @media (max-width: 768px) {
+            body { flex-direction: column; height: 100dvh; overflow: hidden; }
+
+            /* Sidebar devient un panneau compact en haut */
+            #sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 42vh;
+                border-right: none;
+                border-bottom: 2px solid #333;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+
+            /* Header plus compact */
+            .header { padding: 10px 14px; }
+            .top-nav { margin-bottom: 8px; gap: 10px; }
+            h1 { font-size: 16px !important; }
+            .back-button { width: 32px; height: 32px; flex-shrink: 0; }
+
+            /* Recherche + champs plus compacts */
+            .search-box { margin-bottom: 6px; }
+            .search-box input { padding: 8px 50px 8px 10px; font-size: 14px; }
+            label { margin: 6px 0 3px; font-size: 9px; }
+            .input-field { padding: 8px 10px; font-size: 14px; margin-bottom: 6px; }
+
+            /* Boutons action : rangée horizontale scrollable */
+            .header > div[style*="margin-top:10px"] { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+            .btn-action { 
+                display: inline-block !important; 
+                width: auto !important; 
+                padding: 9px 12px; 
+                font-size: 10px; 
+                white-space: nowrap; 
+                flex-shrink: 0;
+                margin: 0 !important;
+            }
+            .btn-full-day { width: 100% !important; display: block !important; margin: 0 0 4px !important; }
+
+            /* Liste des trajets : horizontale scrollable */
+            #sidebar > div[style*="flex:1"] {
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 6px 10px;
+                gap: 8px;
+                flex: none;
+            }
+            .trajet-card {
+                min-width: 130px;
+                max-width: 150px;
+                padding: 10px;
+                margin: 0;
+                flex-shrink: 0;
+                font-size: 13px;
+            }
+            .summary-day { 
+                margin: 6px 10px; 
+                padding: 10px; 
+                flex-shrink: 0; 
+            }
+            .summary-day > div:first-child { font-size: 9px; }
+            .summary-day > div:last-child { font-size: 20px !important; }
+
+            /* Zone carte : prend le reste */
+            #main-viz { flex: 1; min-height: 0; position: relative; }
+            #map, #plot3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+            /* Info-box : plus petite, adaptée au tactile */
+            #info-box {
+                top: 8px;
+                left: 8px;
+                right: 8px;
+                transform: none;
+                width: auto;
+                font-size: 11px;
+                padding: 7px 12px;
+                white-space: normal;
+                flex-wrap: wrap;
+                gap: 4px;
+                justify-content: center;
+            }
+            #info-box span.item { margin: 0 4px; }
+            #info-box .stats-divider { display: none; }
+
+            /* Légende vitesse : repositionnée en bas à droite, plus petite */
+            #speed-legend {
+                bottom: 80px;
+                right: 10px;
+                font-size: 10px;
+                padding: 8px;
+            }
+
+            /* Replay bar : plus compacte, centrée en bas */
+            #replay-bar {
+                bottom: 12px;
+                padding: 10px 14px;
+                gap: 8px;
+                max-width: calc(100% - 40px);
+            }
+            #replay-bar input[type="range"] { width: 100px; min-width: 80px; }
+            .play-btn, .save-video-btn { width: 34px; height: 34px; font-size: 15px; flex-shrink: 0; }
+
+            /* Snap button */
+            .snap-btn { top: auto; bottom: 90px; right: 10px; font-size: 10px; padding: 7px 10px; }
+
+            /* Contrôle couches Leaflet : déplacé plus haut pour ne pas chevaucher replay */
+            .leaflet-top.leaflet-right { top: 8px; }
+        }
+
+        /* Petits mobiles */
+        @media (max-width: 420px) {
+            #sidebar { max-height: 45vh; }
+            #info-box { font-size: 10px; }
+            .trajet-card { min-width: 115px; font-size: 12px; }
+        }
     </style>
 </head>
 <body>
