@@ -37,7 +37,9 @@ https://github.com/user-attachments/assets/4b775f8c-1f37-48da-bf2d-899d2c7c9837
 * Visualisation des trajets d'une journée
 * Affichage des vitesses, températures, altitudes, dénivelé maximum, temps, pourcentage départ/arrivée
 * Capture d'écran de la carte 2D, export vidéo du trajet animé
-  
+
+https://github.com/user-attachments/assets/ba735947-125c-4105-b170-1086163dd4b1
+
 ---
 
 ## Prérequis
