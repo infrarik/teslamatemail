@@ -2,16 +2,15 @@
 
 ################################################################################
 # Script d'installation COMPLET TeslaMate Mail
-# Version 3.5 - Installation automatisée complète
+# Version 3.3 - Installation automatisée complète
 #
 # Ce script fait TOUT :
 # - Installation des dépendances
-# - Configuration Postfix (SMTP) avec double vérification pass
+# - Configuration Postfix (SMTP)
 # - Configuration Apache/PHP
-# - Nettoyage index.html par défaut
 # - Déploiement intégral (www -> /var/www/html, root -> /root)
-# - Configuration Docker & Nettoyage yaml (sed [[:blank:]])
-# - Configuration Cron (5 min /bin/bash root)
+# - Configuration Docker & Nettoyage yaml
+# - Création du log et installation du cron hebdomadaire
 # - Récapitulatif détaillé de la configuration
 ################################################################################
 
@@ -31,8 +30,8 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.5                  ║${NC}"
-echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM        ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.3                  ║${NC}"
+echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -69,35 +68,29 @@ read -p "Type de sécurité (1: SMTPS 465, 2: STARTTLS 587) [1] : " SECURITY_TYP
 SECURITY_TYPE=${SECURITY_TYPE:-1}
 
 read -p "Login SMTP : " SMTP_USER
-
-# Double vérification du mot de passe SMTP
-while true; do
-    read -sp "Mot de passe SMTP : " SMTP_PASS
-    echo ""
-    read -sp "Confirmez le mot de passe SMTP : " SMTP_PASS_CONFIRM
-    echo ""
-    if [ "$SMTP_PASS" == "$SMTP_PASS_CONFIRM" ] && [ -n "$SMTP_PASS" ]; then
-        break
-    else
-        echo -e "${RED}✗ Les mots de passe ne correspondent pas ou sont vides. Réessayez.${NC}"
-    fi
-done
+read -sp "Mot de passe SMTP : " SMTP_PASS
+echo ""
 
 read -p "Email expéditeur : " SMTP_FROM
 read -p "Email destinataire par défaut : " DEFAULT_EMAIL
 
+read -p "Prix du kWh (ex: 0.2500) [0.0000] : " KWH_PRICE
+KWH_PRICE=${KWH_PRICE:-0.0000}
+
 # ============================================================================
 # ÉTAPE 1 : Installation des dépendances
 # ============================================================================
-echo -e "${GREEN}[1/9] Installation des dépendances système${NC}"
+echo -e "${GREEN}[1/8] Installation des dépendances système${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
-apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring postgresql-client unzip zip curl wget logrotate net-tools postfix mailutils libsasl2-2 libsasl2-modules ca-certificates mosquitto-clients
+apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring \
+    postgresql-client unzip zip curl wget logrotate net-tools \
+    postfix mailutils libsasl2-2 libsasl2-modules ca-certificates mosquitto-clients
 
 # ============================================================================
 # ÉTAPE 2 : Configuration de Postfix
 # ============================================================================
-echo -e "${GREEN}[2/9] Configuration de Postfix${NC}"
+echo -e "${GREEN}[2/8] Configuration de Postfix${NC}"
 DOMAIN=$(echo "$SMTP_FROM" | cut -d'@' -f2)
 
 cat > /etc/postfix/main.cf <<EOF
@@ -123,64 +116,99 @@ postmap /etc/postfix/generic
 systemctl restart postfix
 
 # ============================================================================
-# ÉTAPE 3 : Nettoyage Apache
+# ÉTAPE 3 : Extraction et déploiement (TOUS LES FICHIERS)
 # ============================================================================
-echo -e "${GREEN}[3/9] Nettoyage de l'installation Apache par défaut${NC}"
-rm -f /var/www/html/index.html
-echo -e "${GREEN}✓ index.html supprimé${NC}"
-
-# ============================================================================
-# ÉTAPE 4 & 5 : Extraction et Déploiement Intégral
-# ============================================================================
-echo -e "${GREEN}[4/9] Déploiement des fichiers (Archive Intégrale)${NC}"
+echo -e "${GREEN}[3/8] Déploiement des fichiers (Archive Intégrale)${NC}"
 TEMP_EXTRACT="/tmp/teslamate_extract_$$"
 mkdir -p "$TEMP_EXTRACT"
 unzip -q "$ZIP_FILE" -d "$TEMP_EXTRACT"
 
-# Déploiement WWW (tous les fichiers)
+# Déploiement WWW
 if [ -d "$TEMP_EXTRACT/www" ]; then
     cp -r "$TEMP_EXTRACT/www"/. /var/www/html/
     mkdir -p /var/www/html/cgi-bin
     chown -R www-data:www-data /var/www/html/
-    chmod -R 755 /var/www/html/
 fi
 
-# Déploiement ROOT (tous les fichiers)
+# Déploiement ROOT
 if [ -d "$TEMP_EXTRACT/root" ]; then
     cp -r "$TEMP_EXTRACT/root"/. /root/
     chmod +x /root/*.sh 2>/dev/null || true
 fi
 
-# ============================================================================
-# ÉTAPE 6 : Configuration du Cron
-# ============================================================================
-echo -e "${GREEN}[6/9] Configuration de la tâche planifiée (Cron)${NC}"
-CRON_JOB="*/5 * * * * /bin/bash /root/teslacharge.sh > /dev/null 2>&1"
-(crontab -l 2>/dev/null | grep -v "teslacharge.sh"; echo "$CRON_JOB") | crontab -
-echo -e "${GREEN}✓ Cron root ajouté${NC}"
+rm -rf "$TEMP_EXTRACT"
 
 # ============================================================================
-# ÉTAPE 7 : Configuration Docker & Nettoyage spécifique
+# ÉTAPE 4 : Configuration Docker & Nettoyage YAML
 # ============================================================================
-echo -e "${GREEN}[7/9] Configuration Docker et nettoyage YAML${NC}"
+echo -e "${GREEN}[4/8] Configuration Docker${NC}"
 DOCKER_COMPOSE_PATH=""
 for path in "/opt/teslamate/docker-compose.yml" "/home/$USER/teslamate/docker-compose.yml" "./docker-compose.yml"; do
     if [ -f "$path" ]; then DOCKER_COMPOSE_PATH="$path"; break; fi
 done
 
-DB_USER="N/A"
-DB_PASS="N/A"
-DB_NAME="N/A"
-
 if [ -n "$DOCKER_COMPOSE_PATH" ]; then
-    # Suppression des commentaires tout en gardant l'indentation
     sed -i 's/[[:blank:]]#.*//' "$DOCKER_COMPOSE_PATH"
-    
-    # Extraction des informations de base de données
-    DB_USER=$(grep "POSTGRES_USER=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
+    DB_USER=$(grep "POSTGRES_USER="     "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
     DB_PASS=$(grep "POSTGRES_PASSWORD=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
-    DB_NAME=$(grep "POSTGRES_DB=" "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
+    DB_NAME=$(grep "POSTGRES_DB="       "$DOCKER_COMPOSE_PATH" | cut -d'=' -f2 | xargs || echo "Non trouvé")
 fi
+
+# ============================================================================
+# ÉTAPE 5 : Écriture du fichier setup (cgi-bin/setup)
+# ============================================================================
+echo -e "${GREEN}[5/8] Écriture de la configuration cgi-bin/setup${NC}"
+mkdir -p /var/www/html/cgi-bin
+SETUP_FILE="/var/www/html/cgi-bin/setup"
+
+# Préserver les lignes existantes autres que les clés qu'on va écrire, ou créer de zéro
+touch "$SETUP_FILE"
+for KEY in NOTIFICATION_EMAIL KWH_PRICE DOCKER_PATH LANGUAGE CURRENCY; do
+    sed -i "/^${KEY}=/d" "$SETUP_FILE"
+done
+
+cat >> "$SETUP_FILE" <<EOF
+NOTIFICATION_EMAIL=$DEFAULT_EMAIL
+KWH_PRICE=$KWH_PRICE
+DOCKER_PATH=${DOCKER_COMPOSE_PATH:-}
+LANGUAGE=fr
+CURRENCY=EUR
+EOF
+
+chown www-data:www-data "$SETUP_FILE"
+chmod 640 "$SETUP_FILE"
+
+# ============================================================================
+# ÉTAPE 6 : Création du fichier de log
+# ============================================================================
+echo -e "${GREEN}[6/8] Création du fichier de log${NC}"
+touch /var/log/tesla_rapport.log
+chmod 666 /var/log/tesla_rapport.log
+echo -e "   ${CYAN}Log créé : /var/log/tesla_rapport.log${NC}"
+
+# ============================================================================
+# ÉTAPE 7 : Installation du cron hebdomadaire
+# ============================================================================
+echo -e "${GREEN}[7/8] Installation du cron hebdomadaire (lundi 4h)${NC}"
+CRON_SCRIPT="/var/www/html/tesla_rapport_hebdo.php"
+CRON_LOG="/var/log/tesla_rapport.log"
+CRON_LINE="0 4 * * 1 php $CRON_SCRIPT >> $CRON_LOG 2>&1"
+CRON_MARKER="tesla_rapport_hebdo"
+
+if crontab -l 2>/dev/null | grep -q "$CRON_MARKER"; then
+    echo -e "   ${YELLOW}⚠ Cron déjà présent, non modifié${NC}"
+else
+    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+    echo -e "   ${CYAN}Cron installé : $CRON_LINE${NC}"
+fi
+
+# ============================================================================
+# ÉTAPE 8 : Vérification Apache / PHP
+# ============================================================================
+echo -e "${GREEN}[8/8] Vérification Apache / PHP${NC}"
+a2enmod php* 2>/dev/null || true
+systemctl enable apache2 2>/dev/null || true
+systemctl restart apache2
 
 # ============================================================================
 # RÉSUMÉ FINAL
@@ -196,20 +224,25 @@ echo -e "   Port / Sécurité  : ${YELLOW}$SMTP_PORT ($([ "$SECURITY_TYPE" = "1"
 echo -e "   Utilisateur      : ${YELLOW}$SMTP_USER${NC}"
 echo -e "   Expéditeur       : ${YELLOW}$SMTP_FROM${NC}"
 echo -e "   Destinataire     : ${YELLOW}$DEFAULT_EMAIL${NC}"
+echo -e "   Prix kWh         : ${YELLOW}$KWH_PRICE $( grep -o 'CURRENCY=.*' "$SETUP_FILE" 2>/dev/null | cut -d'=' -f2 || echo 'EUR' )${NC}"
 echo ""
 
 if [ -n "$DOCKER_COMPOSE_PATH" ]; then
-    echo -e "${CYAN}🐳 CONFIGURATION DOCKER-COMPOSE (DB) :${NC}"
-    echo -e "   Fichier          : ${YELLOW}$DOCKER_COMPOSE_PATH${NC}"
+    echo -e "${CYAN}🐳 CONFIGURATION DOCKER-COMPOSE (BASE DE DONNÉES) :${NC}"
+    echo -e "   Fichier source   : ${YELLOW}$DOCKER_COMPOSE_PATH${NC}"
     echo -e "   Database Name    : ${GREEN}$DB_NAME${NC}"
     echo -e "   Database User    : ${GREEN}$DB_USER${NC}"
     echo -e "   Database Pass    : ${GREEN}$DB_PASS${NC}"
+else
+    echo -e "${RED}⚠ Aucune donnée Docker extraite (fichier non trouvé).${NC}"
 fi
 
+echo ""
+echo -e "${CYAN}⏰ CRON HEBDOMADAIRE :${NC}"
+echo -e "   ${GREEN}$CRON_LINE${NC}"
+echo -e "   Log : ${YELLOW}$CRON_LOG${NC}"
 echo ""
 echo -e "${CYAN}🌐 ACCÈS :${NC}"
 IP_ADDR=$(hostname -I | awk '{print $1}')
 echo -e "   URL : ${GREEN}http://$IP_ADDR/tesla.php${NC}"
 echo ""
-
-rm -rf "$TEMP_EXTRACT"

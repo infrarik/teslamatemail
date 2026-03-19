@@ -1,65 +1,116 @@
 #!/bin/bash
 
 ################################################################################
-# Script de mise à jour - TeslaMate Mail Web
-# Version 1.2 - Support PWA & Sécurité .htaccess
+# Script de déploiement WEB uniquement — TeslaMate Mail
+# Version 3.3
+#
+# Déploie les fichiers PHP sans reconfigurer Postfix ni les dépendances.
+# Utile pour une mise à jour ou un redéploiement rapide.
+#
+# Ajoute également :
+# - Création du fichier de log /var/log/tesla_rapport.log
+# - Installation du cron hebdomadaire (lundi 4h)
 ################################################################################
 
-# Nom de l'archive
-ARCHIVE="files.zip"
+set -e
 
 # Couleurs
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Vérification des droits root
-if [ "$EUID" -ne 0 ]; then
-  echo -e "${RED}✗ Veuillez exécuter ce script en tant que root ou avec sudo.${NC}"
-  exit 1
-fi
+ARCHIVE="files.zip"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ZIP_FILE="$SCRIPT_DIR/$ARCHIVE"
 
-# Vérification de la présence de l'archive
-if [ ! -f "$ARCHIVE" ]; then
-    echo -e "${RED}✗ Erreur : Le fichier $ARCHIVE est introuvable dans le répertoire courant $(pwd)${NC}"
+echo -e "${CYAN}╔═══════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║     Déploiement Web TeslaMate Mail v3.3               ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Vérification root
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}✗ Ce script doit être exécuté en tant que root${NC}"
     exit 1
 fi
 
-echo -e "${YELLOW}🚀 Début du déploiement des mises à jour...${NC}"
-
-# Création du dossier temporaire propre
-rm -rf /tmp/extraction_web/
-mkdir -p /tmp/extraction_web/
-
-# 1. Extraction du contenu du dossier 'root' vers /root
-echo -e "→ Mise à jour des scripts système (/root)..."
-unzip -o -q "$ARCHIVE" "root/*" -d /tmp/extraction_web/
-cp -r /tmp/extraction_web/root/. /root/
-chmod +x /root/*.sh 2>/dev/null || true
-
-# 2. Extraction du contenu du dossier 'www' vers /var/www/html
-# EXCLUSION : On préserve setup et lastchargeid, mais on laisse passer .htaccess
-echo -e "→ Mise à jour de l'interface web et sécurité (/var/www/html)..."
-unzip -o -q "$ARCHIVE" "www/*" -x "www/cgi-bin/setup" "www/cgi-bin/lastchargeid" -d /tmp/extraction_web/
-cp -r /tmp/extraction_web/www/. /var/www/html/
-
-# Nettoyage
-rm -rf /tmp/extraction_web/
-
-# Ajustement des permissions pour le serveur web
-chown -R www-data:www-data /var/www/html/
-
-# On s'assure que les fichiers de config restent modifiables par l'interface PHP
-[ -f /var/www/html/cgi-bin/setup ] && chmod 666 /var/www/html/cgi-bin/setup
-[ -f /var/www/html/cgi-bin/lastchargeid ] && chmod 666 /var/www/html/cgi-bin/lastchargeid
-
-# Vérification de la sécurité
-echo -e "${YELLOW}→ Vérification des composants de sécurité...${NC}"
-if [ -f /var/www/html/cgi-bin/.htaccess ]; then
-    echo -e "${GREEN}  ✓ Fichier .htaccess déployé.${NC}"
-else
-    echo -e "${RED}  ✗ Attention : .htaccess manquant dans cgi-bin/.${NC}"
+# Vérification archive
+if [ ! -f "$ZIP_FILE" ]; then
+    echo -e "${RED}✗ Fichier introuvable : $ZIP_FILE${NC}"
+    exit 1
 fi
 
-echo -e "${GREEN}✅ Mise à jour terminée avec succès !${NC}"
+# ============================================================================
+# ÉTAPE 1 : Extraction et déploiement
+# ============================================================================
+echo -e "${GREEN}[1/4] Extraction et déploiement des fichiers${NC}"
+TEMP_EXTRACT="/tmp/teslamate_web_extract_$$"
+mkdir -p "$TEMP_EXTRACT"
+unzip -q "$ZIP_FILE" -d "$TEMP_EXTRACT"
+
+# Déploiement WWW
+if [ -d "$TEMP_EXTRACT/www" ]; then
+    cp -r "$TEMP_EXTRACT/www"/. /var/www/html/
+    mkdir -p /var/www/html/cgi-bin
+    chown -R www-data:www-data /var/www/html/
+    echo -e "   ${CYAN}→ /var/www/html/ déployé${NC}"
+fi
+
+# Déploiement ROOT
+if [ -d "$TEMP_EXTRACT/root" ]; then
+    cp -r "$TEMP_EXTRACT/root"/. /root/
+    chmod +x /root/*.sh 2>/dev/null || true
+    echo -e "   ${CYAN}→ /root/ déployé${NC}"
+fi
+
+rm -rf "$TEMP_EXTRACT"
+
+# ============================================================================
+# ÉTAPE 2 : Création du fichier de log
+# ============================================================================
+echo -e "${GREEN}[2/4] Création du fichier de log${NC}"
+touch /var/log/tesla_rapport.log
+chmod 666 /var/log/tesla_rapport.log
+echo -e "   ${CYAN}Log créé : /var/log/tesla_rapport.log${NC}"
+
+# ============================================================================
+# ÉTAPE 3 : Installation du cron hebdomadaire
+# ============================================================================
+echo -e "${GREEN}[3/4] Installation du cron hebdomadaire (lundi 4h)${NC}"
+CRON_SCRIPT="/var/www/html/tesla_rapport_hebdo.php"
+CRON_LOG="/var/log/tesla_rapport.log"
+CRON_LINE="0 4 * * 1 php $CRON_SCRIPT >> $CRON_LOG 2>&1"
+CRON_MARKER="tesla_rapport_hebdo"
+
+if crontab -l 2>/dev/null | grep -q "$CRON_MARKER"; then
+    echo -e "   ${YELLOW}⚠ Cron déjà présent, non modifié${NC}"
+    crontab -l | grep "$CRON_MARKER"
+else
+    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
+    echo -e "   ${CYAN}Cron installé : $CRON_LINE${NC}"
+fi
+
+# ============================================================================
+# ÉTAPE 4 : Redémarrage Apache
+# ============================================================================
+echo -e "${GREEN}[4/4] Redémarrage Apache${NC}"
+systemctl restart apache2 2>/dev/null || service apache2 restart 2>/dev/null || true
+
+# ============================================================================
+# RÉSUMÉ
+# ============================================================================
+echo ""
+echo -e "${CYAN}╔═══════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║      DÉPLOIEMENT TERMINÉ                              ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${CYAN}⏰ Cron hebdomadaire :${NC}"
+echo -e "   ${GREEN}$CRON_LINE${NC}"
+echo -e "   Log : ${YELLOW}$CRON_LOG${NC}"
+echo ""
+echo -e "${CYAN}🌐 Accès :${NC}"
+IP_ADDR=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+echo -e "   URL : ${GREEN}http://$IP_ADDR/tesla.php${NC}"
+echo ""
