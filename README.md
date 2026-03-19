@@ -38,7 +38,15 @@ https://github.com/user-attachments/assets/4b775f8c-1f37-48da-bf2d-899d2c7c9837
 * Affichage des vitesses, températures, altitudes, dénivelé maximum, temps, pourcentage départ/arrivée
 * Capture d'écran de la carte 2D, export vidéo du trajet animé
 
-https://github.com/user-attachments/assets/ba735947-125c-4105-b170-1086163dd4b1
+
+https://github.com/user-attachments/assets/865178fc-aed1-495b-8a26-20e365b443c3
+
+
+
+
+https://github.com/user-attachments/assets/2d993283-4447-40c4-8aba-36910724adc8
+
+
 
 ---
 
