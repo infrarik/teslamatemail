@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script de création du package files.zip pour TeslaMate Mail
-# Version 3.4.2 - Ajout PWA et sécurisation .htaccess
+# Version 3.5 - Ajout rapport hebdomadaire PDF par email
 ################################################################################
 
 set -e
@@ -25,7 +25,7 @@ SRC_WWW="/var/www/html"
 
 clear
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}     Création du package TeslaMate Mail v3.4.2${NC}"
+echo -e "${BLUE}     Création du package TeslaMate Mail v3.5${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -62,7 +62,7 @@ mkdir -p "$PACKAGE_DIR/www/cgi-bin"
 # ============================================================================
 echo -e "${GREEN}[2/6] Recherche des fichiers d'installation${NC}"
 
-FILES_BASE=("install.sh" "LICENSE" "README.md")
+FILES_BASE=("install.sh" "installweb.sh" "LICENSE" "README.md")
 for file in "${FILES_BASE[@]}"; do
     if [ -f "$SCRIPT_DIR/$file" ]; then
         cp "$SCRIPT_DIR/$file" "$PACKAGE_DIR/"
@@ -94,7 +94,8 @@ echo -e "${GREEN}[4/6] Copie des fichiers web (y compris PWA)${NC}"
 WWW_FILES=(
     "index.php" "tesla.php" "teslamate_api.php" "teslaconf.php"
     "teslaconfig_handler.php" "teslanotif.php" "teslamap.php"
-    "teslacalcul.php" "credits.php" "parrain.php"
+    "teslacalcul.php" "tesla_rapport_hebdo.php" "tesla_rapport_hebdo_body.php"
+    "credits.php" "parrain.php"
     "telegram_helper.php" "telegramtest.php" "test_docker.php"
     "test_email.php" "test_mqtt.php" "test_telegram.php"
     "notification_charging.php" "logoteslamatemail.png" "logoparrain.png"
@@ -128,6 +129,10 @@ telegram_bot_token=xxxx
 email_enabled=False
 telegram_enabled=False
 mqtt_enabled=False
+KWH_PRICE=0.0000
+LANGUAGE=fr
+CURRENCY=EUR
+RAPPORT_HEBDO=False
 EOF
 
 # Création du fichier .htaccess de sécurité
