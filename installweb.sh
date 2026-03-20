@@ -27,7 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ZIP_FILE="$SCRIPT_DIR/$ARCHIVE"
 
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║     Déploiement Web TeslaMate Mail v3.5               ║${NC}"
+echo -e "${CYAN}║     Déploiement Web TeslaMate Mail v3.6               ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
 

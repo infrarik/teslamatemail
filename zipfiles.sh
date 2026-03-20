@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script de création du package files.zip pour TeslaMate Mail
-# Version 3.5 - Ajout rapport hebdomadaire PDF par email
+# Version 3.6 - PDF pur PHP sans dépendance externe
 ################################################################################
 
 set -e
@@ -25,7 +25,7 @@ SRC_WWW="/var/www/html"
 
 clear
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}     Création du package TeslaMate Mail v3.5${NC}"
+echo -e "${BLUE}     Création du package TeslaMate Mail v3.6${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -94,7 +94,7 @@ echo -e "${GREEN}[4/6] Copie des fichiers web (y compris PWA)${NC}"
 WWW_FILES=(
     "index.php" "tesla.php" "teslamate_api.php" "teslaconf.php"
     "teslaconfig_handler.php" "teslanotif.php" "teslamap.php"
-    "teslacalcul.php" "tesla_rapport_hebdo.php" "tesla_rapport_hebdo_body.php"
+    "teslacalcul.php" "tesla_rapport_hebdo.php" "tesla_rapport_hebdo_body.php" "fn_mail_rapport.php"
     "credits.php" "parrain.php"
     "telegram_helper.php" "telegramtest.php" "test_docker.php"
     "test_email.php" "test_mqtt.php" "test_telegram.php"

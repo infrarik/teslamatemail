@@ -31,7 +31,7 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.5                  ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.6                  ║${NC}"
 echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
