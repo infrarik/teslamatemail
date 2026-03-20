@@ -1,194 +1,461 @@
-===>>> ENGLISH BELOW
-
 # TeslaMate Mail
 
-Copyright (C) 2026  monwifi.fr / Eric B.
+**Copyright (C) 2026 monwifi.fr / Eric B.**  
+Licence GNU GPL v3 — Logiciel libre, sans garantie.
 
-Ce programme est un logiciel libre : vous pouvez le redistribuer et/ou le modifier 
-selon les termes de la Licence Publique Générale GNU (GNU GPL) telle que publiée 
-par la Free Software Foundation, soit la version 3 de ladite licence, ou 
-(à votre discrétion) toute version ultérieure.
+🇬🇧 **[English version — click here](#english-version)**
 
-**Note importante :** TeslaMate Mail n'a aucun lien officiel avec le projet TeslaMate. C'est uniquement un ajout qui utilise une instance TeslaMate déjà installée.
+> **Note :** TeslaMate Mail n'a aucun lien officiel avec le projet TeslaMate. C'est uniquement un module complémentaire qui exploite une instance TeslaMate déjà installée, sans jamais modifier sa base de données.
 
 ---
 
+## Sommaire
 
-## Fonctions principales (FR)
+- [Fonctionnalités](#fonctionnalités)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Mise à jour](#mise-à-jour)
+- [Configuration](#configuration)
+- [Vérifications techniques](#vérifications-techniques)
+- [Interactions avec TeslaMate](#interactions-avec-teslamate)
+- [Parrainage Tesla](#parrainage-tesla)
+- [Remerciements](#remerciements)
 
-TeslaMate Mail permet de notifier et de transmettre les données de charge de votre véhicule via trois canaux distincts :
+---
 
-### 🤖 Bot Telegram (Notifications d'état)
-Le bot envoie des messages formatés pour les événements suivants :
-* **Test de configuration :** "🔔 Test de notification TeslaMate ✅ Votre bot Telegram est configuré correctement ! 📅 [Date et heure]"
-* **Charge terminée :** "✅ Charge terminée 🔋 Batterie: [niveau]% 📅 [Date et heure]"
-D'autres messages sont prévus, pas actifs pour le moment.
+## Fonctionnalités
 
-### 📡 Intégration MQTT (Données brutes)
-Pour chaque fin de charge, le programme publie une trame au format JSON :
-* **Exemple de trame :** `{"id":837,"kwh":10.02,"soc":100,"duration":169}`
+### 🗺️ Carte des trajets (2D)
 
-### 📧 Notifications par Email
-* **Fin de charge :** Envoi d'un e-mail récapitulatif indiquant la fin de la session et le nombre de **kWh consommés**.
+- Visualisation des trajets d'une journée complète ou d'un trajet individuel
+- Tracé coloré selon la vitesse (palette de couleurs de vert à rouge foncé)
+- Affichage des températures, altitudes, dénivelé cumulé positif, vitesse max
+- **Marqueurs interactifs** sur la carte :
+  - 🟢 **Départ (D)** et 🔴 **Arrivée (A)** avec niveau de batterie
+  - 🔵 **Pauses parking (P)** : durée, altitude, température extérieure
+  - 🟡 **Charges (⚡)** : kWh ajoutés, kWh consommés, durée, altitude, température
+- Infobulle au survol de la trace : heure, altitude, température, vitesse
+- Capture d'écran de la carte 2D
+- Export vidéo animé du trajet
+- Export KML pour Google Earth
+- Sélecteur de fond de carte : Plan / Satellite / Mixte
+- Interface responsive mobile/tablette avec panneau rétractable
 
-https://github.com/user-attachments/assets/4b775f8c-1f37-48da-bf2d-899d2c7c9837
+### 🏔️ Carte des altitudes (3D)
 
-### Cartes
-* Visualisation des trajets d'une journée
-* Affichage des vitesses, températures, altitudes, dénivelé maximum, temps, pourcentage départ/arrivée
-* Capture d'écran de la carte 2D, export vidéo du trajet animé
+- Tracé 3D interactif (Plotly) coloré selon l'altitude (palette Viridis)
+- **Marqueurs annotés avec infobulles complètes** :
+  - 🟢 **Départ (D)** : heure, altitude, température, ville (Nominatim)
+  - 🔴 **Arrivée (A)** : heure, altitude, température, ville (Nominatim)
+  - 🔵 **Pauses parking (P)** : durée, heure, altitude, température, ville
+  - 🟡 **Charges (⚡)** : kWh ajoutés, durée, heure, altitude, température, ville
+- **Infobulles sur chaque point de la trace** : heure, altitude, température, vitesse
+- Géocodage inverse asynchrone via **Nominatim / OpenStreetMap** (sans clé API)
+- Les villes apparaissent progressivement sur les marqueurs au chargement
 
+### 📊 Calculateur de consommation
 
-https://github.com/user-attachments/assets/865178fc-aed1-495b-8a26-20e365b443c3
+- Calcul sur période personnalisée ou raccourcis : cette semaine, semaine dernière, ce mois, mois dernier, cette année, année précédente
+- Résultats : distance, nombre de charges, énergie ajoutée, énergie consommée, coût total, **consommation moyenne aux 100 km**
+- Filtrage par véhicule et par geofence
+- Mode **V2L** (Vehicle-to-Load)
+- Export **PDF** (généré en PHP pur, sans dépendance externe)
+- Export **CSV**
+- **Envoi par email** : rapport HTML mis en page + PDF en pièce jointe, identique au rapport hebdomadaire
 
+### 📧 Rapport hebdomadaire automatique
 
+- Envoi automatique chaque **lundi à 4h du matin** (cron)
+- Couvre la **semaine précédente** (lundi → dimanche)
+- Contenu : KPIs (distance, charges, kWh ajoutés, kWh consommés, coût, conso/100km) + tableau détaillé
+- **PDF en pièce jointe** généré en PHP pur (aucune dépendance externe)
+- Activation / désactivation via un **toggle dans teslacalcul.php** (écrit `RAPPORT_HEBDO=True/False` dans `cgi-bin/setup`)
+- Le cron est fixe et permanent ; c'est le flag dans `setup` qui contrôle l'envoi
+- Prix du kWh lu depuis `cgi-bin/setup` (clé `KWH_PRICE`)
+- Bouton **"ENVOI RAPPORT SEMAINE"** pour envoyer la semaine en cours à la demande
 
+### 🤖 Bot Telegram
 
-https://github.com/user-attachments/assets/2d993283-4447-40c4-8aba-36910724adc8
+- Notification de fin de charge : niveau de batterie, date/heure
+- Test de configuration
+- D'autres événements sont prévus
 
+### 📡 Intégration MQTT
 
+- Publication JSON à chaque fin de charge :  
+  `{"id":837,"kwh":10.02,"soc":100,"duration":169}`
+
+### 📱 Interface
+
+- Application **PWA** installable sur mobile (icône, service worker)
+- Accès protégé par **code PIN** à 4 chiffres (configurable dans `setup`)
+- Interface bilingue **Français / Anglais**
 
 ---
 
 ## Prérequis
 
-Pour faire fonctionner TeslaMate Mail, vous devez configurer :
-1. **Instance TeslaMate :** Accès à la base de données Postgres.
-2. **Serveur SMTP :** Identifiants pour l'envoi des emails.
-3. **Broker MQTT :** Un serveur (ex: Mosquitto) pour les trames JSON.
-4. **Bot Telegram :** Un `API Token` et votre `Chat ID`.
+| Élément | Description |
+|---|---|
+| Instance TeslaMate | Accès à la base de données PostgreSQL |
+| Serveur SMTP | Identifiants pour l'envoi des emails |
+| Broker MQTT | Serveur Mosquitto ou équivalent |
+| Bot Telegram | API Token + Chat ID |
+| Serveur Linux | Apache + PHP + accès root |
 
 ---
 
 ## Installation
-1. copiez les fichiers files.zip, install.sh, installweb.sh, uninstall.sh dans votre
-   répertoire /root
-2. Depuis root, lancez : bash install.sh
-   Répondez aux questions sur l'installation des emails, etc.
-3. allez sur http://votre_ip pour configurer teslamate mail, en choisissant français ou anglais
-   en haut à droite.
 
----
+```bash
+# 1. Copiez dans /root
+files.zip  install.sh  installweb.sh
 
-## Configuration
+# 2. Lancez l'installation complète
+bash install.sh
+```
 
-La configuration s'effectue en cliquant sur la roue dentelée de l'écran principal. Pensez à bien sauvegarder vos choix.
+Le script `install.sh` effectue automatiquement :
+- Installation des dépendances (Apache, PHP, Postfix, etc.)
+- Configuration Postfix (SMTP sortant)
+- Déploiement des fichiers web dans `/var/www/html`
+- Écriture de `cgi-bin/setup` avec votre configuration (email, prix kWh, etc.)
+- Création du fichier de log `/var/log/tesla_rapport.log`
+- Installation du **cron hebdomadaire** (lundi 4h)
+
+```bash
+# 3. Accédez à l'interface
+http://votre_ip/
+```
+
+Configurez TeslaMate Mail via la roue dentée de l'écran principal.
 
 ---
 
 ## Mise à jour
 
-Vous pouvez effectuer une mise à jour des fichiers lorsque files.zip a été mis à jour.
-Chargez le dans /root puis lancez le script : bash installweb.sh
-Ce script procède à l'extraction et installera automatiquement les fichiers à jour, sans jamais toucher à
-votre configuration.
+Lorsqu'un nouveau `files.zip` est disponible :
+
+```bash
+# Depuis /root
+bash installweb.sh
+```
+
+Ce script met à jour tous les fichiers PHP **sans jamais toucher à votre configuration** (`cgi-bin/setup` est préservé, les clés manquantes sont ajoutées automatiquement).
 
 ---
 
-## Interactions avec Teslamate :
+## Configuration
 
-Teslamate Web n'intervient qu'une seule fois sur Teslamate en retirant les commentaires de votre docker-compose.yml, 
-à l'exclusion de toute autre modification. Teslamate Web se contente de récupérer les infos de la base de données de
-Teslamate, de les interpréter sans jamais les modifier.
+Toute la configuration est centralisée dans `/var/www/html/cgi-bin/setup` :
+
+| Clé | Description |
+|---|---|
+| `notification_email` | Email destinataire |
+| `KWH_PRICE` | Prix du kWh (ex: `0.2500`) |
+| `RAPPORT_HEBDO` | `True` / `False` — envoi hebdomadaire actif |
+| `DOCKER_PATH` | Chemin vers `docker-compose.yml` |
+| `LANGUAGE` | `fr` ou `en` |
+| `CURRENCY` | `EUR`, `USD`, etc. |
+| `email_enabled` | `True` / `False` |
+| `telegram_enabled` | `True` / `False` |
+| `mqtt_enabled` | `True` / `False` |
+| `code` | Code PIN d'accès (4 chiffres) |
 
 ---
 
 ## Vérifications techniques
 
-En cas de soucis, pensez à vérifier :
-1. /var/www/html/cgi-bin/setup : ce fichier contient la configuration de votre Teslamate Mail.
-2. /var/www/html/cgi-bin/lastchargeid : ce fichier contient le numéro de la dernière session de charge
-   sur votre Teslamate.
-3. /var/www/html/cgi-bin/telegram_user.json : ce fichier contient le ou les destinataires Telegram au format JSON
-4. abonnez vous avec mosquitto_sub au topic d'envoi configuré sur votre Teslamate Mail, pratique pour vérifier le
-   bon fonctionnement.
+```bash
+# Configuration principale
+cat /var/www/html/cgi-bin/setup
+
+# Dernière session de charge traitée
+cat /var/www/html/cgi-bin/lastchargeid
+
+# Destinataires Telegram
+cat /var/www/html/cgi-bin/telegram_user.json
+
+# Logs du rapport hebdomadaire
+tail -50 /var/log/tesla_rapport.log
+
+# Crontab actif
+crontab -l
+
+# Test manuel du rapport
+php /var/www/html/tesla_rapport_hebdo.php
+
+# Écouter le topic MQTT
+mosquitto_sub -t "teslamate/tmy" -v
+```
+
+---
+
+## Interactions avec TeslaMate
+
+TeslaMate Mail interagit avec TeslaMate de façon **strictement non destructive** :
+- Suppression des commentaires dans `docker-compose.yml` (une seule fois, à l'installation)
+- Lecture seule de la base de données PostgreSQL
+- Aucune modification des données TeslaMate
 
 ---
 
 ## Parrainage Tesla
 
-Si ce développement GNU gratuit vous plait, n'hésitez pas à utiliser le lien de parraiange Tesla figurant en bas de la page principale,
-c'est toujours un coup de pouce utile pour poursuivre et faire évoluer. Un grand merci par avance !
+Si ce développement libre vous est utile, n'hésitez pas à utiliser le lien de parrainage Tesla présent en bas de la page principale — c'est un coup de pouce apprécié pour continuer à faire évoluer le projet. Merci !
 
-## Remerciements 
-Immense merci à Jérôme Y. pour l'aide apportée au débogage, pour les idées de nouvelles fonctionnalités.
-Merci également au groupe FB Tesla Model Y - France et le nombre important de réactions positives.
+---
 
+## Remerciements
 
-===============================================================================
+- **Jérôme Y.** — débogage et idées de nouvelles fonctionnalités
+- **Groupe Facebook Tesla Model Y - France** — retours et soutien
 
+---
 
-## À propos de la licence
+## Licence
 
-1. **Obligation de Copyleft :** Toute modification doit rester sous licence GPL.
-2. **Accès au Code Source :** Obligation de fournir le code source.
-3. **Absence de Garantie :** Distribué sans aucune garantie.
+Ce programme est distribué sous licence **GNU GPL v3**.
 
+1. **Copyleft** : toute modification doit rester sous licence GPL
+2. **Code source** : obligation de le fournir si redistribution
+3. **Absence de garantie** : distribué tel quel, sans garantie d'aucune sorte
 
+---
 
+*TeslaMate Mail — monwifi.fr / Eric B. — 2026*
 
-## TeslaMate Mail
-Copyright (C) 2026 monwifi.fr / Eric B.
+---
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License (GNU GPL) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+---
 
-Important Note: TeslaMate Mail has no official connection with the TeslaMate project. It is strictly an add-on that utilizes an existing TeslaMate installation.
+# English Version
 
-## Main Features (EN)
-TeslaMate Mail allows you to notify and transmit your vehicle's charging data via three distinct channels:
+<a name="english-version"></a>
 
-🤖 Telegram Bot (Status Notifications)
-The bot sends formatted messages for the following events:
+# TeslaMate Mail
 
-Configuration Test: "🔔 TeslaMate notification test ✅ Your Telegram bot is configured correctly! 📅 [Date and time]"
+**Copyright (C) 2026 monwifi.fr / Eric B.**  
+GNU GPL v3 License — Free software, no warranty.
 
-Charge Completed: "✅ Charge completed 🔋 Battery: [level]% 📅 [Date and time]" Other messages are planned but not currently active.
+🇫🇷 **[Version française — cliquez ici](#teslamate-mail)**
 
-📡 MQTT Integration (Raw Data)
-At the end of each charging session, the program publishes a frame in JSON format:
+> **Note:** TeslaMate Mail has no official connection with the TeslaMate project. It is strictly an add-on that uses an existing TeslaMate installation, without ever modifying its database.
 
-Frame Example: {"id":837,"kwh":10.02,"soc":100,"duration":169}
+---
 
-📧 Email Notifications
-End of Charge: Sends a summary email indicating the end of the session and the number of kWh consumed.
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation-1)
+- [Update](#update)
+- [Configuration](#configuration-1)
+- [Technical Checks](#technical-checks)
+- [Interactions with TeslaMate](#interactions-with-teslamate)
+- [Tesla Referral](#tesla-referral)
+- [Acknowledgements](#acknowledgements)
+
+---
+
+## Features
+
+### 🗺️ Trip Map (2D)
+
+- Visualization of a full day or individual trip
+- Color-coded track by speed (green to dark red palette)
+- Display of temperatures, altitudes, cumulative elevation gain, max speed
+- **Interactive markers** on the map:
+  - 🟢 **Departure (D)** and 🔴 **Arrival (A)** with battery level
+  - 🔵 **Parking stops (P)**: duration, altitude, outside temperature
+  - 🟡 **Charging sessions (⚡)**: kWh added, kWh used, duration, altitude, temperature
+- Tooltip on track hover: time, altitude, temperature, speed
+- 2D map screenshot
+- Animated trip video export
+- KML export for Google Earth
+- Map layer selector: Map / Satellite / Hybrid
+- Responsive mobile/tablet interface with collapsible panel
+
+### 🏔️ Altitude Map (3D)
+
+- Interactive 3D track (Plotly) color-coded by altitude (Viridis palette)
+- **Annotated markers with full tooltips**:
+  - 🟢 **Departure (D)**: time, altitude, temperature, city (Nominatim)
+  - 🔴 **Arrival (A)**: time, altitude, temperature, city (Nominatim)
+  - 🔵 **Parking stops (P)**: duration, time, altitude, temperature, city
+  - 🟡 **Charging sessions (⚡)**: kWh added, duration, time, altitude, temperature, city
+- **Tooltip on each track point**: time, altitude, temperature, speed
+- Asynchronous reverse geocoding via **Nominatim / OpenStreetMap** (no API key required)
+- City names appear progressively on markers as they load
+
+### 📊 Consumption Calculator
+
+- Calculation over a custom period or quick shortcuts: this week, last week, this month, last month, this year, last year
+- Results: distance, number of charges, energy added, energy used, total cost, **average consumption per 100 km**
+- Filter by vehicle and geofence
+- **V2L** mode (Vehicle-to-Load)
+- **PDF export** (generated in pure PHP, no external dependency)
+- **CSV export**
+- **Send by email**: formatted HTML report + PDF attachment, identical to the weekly report
+
+### 📧 Automatic Weekly Report
+
+- Automatic send every **Monday at 4:00 AM** (cron)
+- Covers the **previous week** (Monday → Sunday)
+- Content: KPIs (distance, charges, kWh added, kWh used, cost, consumption/100km) + detailed table
+- **PDF attachment** generated in pure PHP (no external dependency)
+- Enable / disable via a **toggle in teslacalcul.php** (writes `RAPPORT_HEBDO=True/False` to `cgi-bin/setup`)
+- The cron is fixed and permanent; the flag in `setup` controls whether the email is sent
+- kWh price read from `cgi-bin/setup` (key `KWH_PRICE`)
+- **"SEND WEEK REPORT"** button to send the current week on demand
+
+### 🤖 Telegram Bot
+
+- End-of-charge notification: battery level, date/time
+- Configuration test
+- More events planned
+
+### 📡 MQTT Integration
+
+- JSON publish at each end of charge:  
+  `{"id":837,"kwh":10.02,"soc":100,"duration":169}`
+
+### 📱 Interface
+
+- **PWA** application installable on mobile (icon, service worker)
+- Access protected by a **4-digit PIN code** (configurable in `setup`)
+- **French / English** bilingual interface
+
+---
 
 ## Prerequisites
-To run TeslaMate Mail, you must configure:
-1. TeslaMate Instance: Access to the Postgres database.
-2. SMTP Server: Credentials for sending emails.
-3. MQTT Broker: A server (e.g., Mosquitto) for JSON frames.
-4. Telegram Bot: An API Token and your Chat ID.
+
+| Element | Description |
+|---|---|
+| TeslaMate Instance | Access to the PostgreSQL database |
+| SMTP Server | Credentials for sending emails |
+| MQTT Broker | Mosquitto server or equivalent |
+| Telegram Bot | API Token + Chat ID |
+| Linux Server | Apache + PHP + root access |
+
+---
 
 ## Installation
-1. Copy the files files.zip, install.sh, installweb.sh, and uninstall.sh into your /root directory.
-2. From root, run: bash install.sh Answer the questions regarding email installation, etc.
-3. Go to http://your_ip to configure TeslaMate Mail, choosing French or English at the top right.
 
-## Configuration
-Configuration is done by clicking on the gear icon on the main screen. Remember to save your settings.
+```bash
+# 1. Copy to /root
+files.zip  install.sh  installweb.sh
+
+# 2. Run the full installation
+bash install.sh
+```
+
+The `install.sh` script automatically handles:
+- Dependency installation (Apache, PHP, Postfix, etc.)
+- Postfix configuration (outgoing SMTP)
+- Web file deployment to `/var/www/html`
+- Writing `cgi-bin/setup` with your configuration (email, kWh price, etc.)
+- Creating the log file `/var/log/tesla_rapport.log`
+- Installing the **weekly cron job** (Monday 4am)
+
+```bash
+# 3. Access the interface
+http://your_ip/
+```
+
+Configure TeslaMate Mail via the gear icon on the main screen.
+
+---
 
 ## Update
-You can update the files whenever files.zip has been updated. Upload it to /root then run the script: bash installweb.sh This script will extract and automatically install the updated files without ever affecting your configuration.
 
-## Interactions with TeslaMate
-TeslaMate Web only interacts with TeslaMate once by removing comments from your docker-compose.yml, excluding any other modifications. TeslaMate Web simply retrieves information from the TeslaMate database and interprets it without ever modifying it.
+When a new `files.zip` is available:
+
+```bash
+# From /root
+bash installweb.sh
+```
+
+This script updates all PHP files **without ever touching your configuration** (`cgi-bin/setup` is preserved, any missing keys are added automatically).
+
+---
+
+## Configuration
+
+All configuration is centralized in `/var/www/html/cgi-bin/setup`:
+
+| Key | Description |
+|---|---|
+| `notification_email` | Recipient email address |
+| `KWH_PRICE` | Price per kWh (e.g. `0.2500`) |
+| `RAPPORT_HEBDO` | `True` / `False` — weekly report active |
+| `DOCKER_PATH` | Path to `docker-compose.yml` |
+| `LANGUAGE` | `fr` or `en` |
+| `CURRENCY` | `EUR`, `USD`, etc. |
+| `email_enabled` | `True` / `False` |
+| `telegram_enabled` | `True` / `False` |
+| `mqtt_enabled` | `True` / `False` |
+| `code` | 4-digit access PIN code |
+
+---
 
 ## Technical Checks
-In case of issues, please check:
-1. /var/www/html/cgi-bin/setup: This file contains your TeslaMate Mail configuration.
-2. /var/www/html/cgi-bin/lastchargeid: This file contains the ID number of the last charging session on your TeslaMate.
-3. /var/www/html/cgi-bin/telegram_user.json: This file contains the Telegram recipient(s) in JSON format.
 
-Subscribe with mosquitto_sub to the sending topic configured in your TeslaMate Mail; this is useful for verifying proper operation.
+```bash
+# Main configuration
+cat /var/www/html/cgi-bin/setup
+
+# Last processed charging session
+cat /var/www/html/cgi-bin/lastchargeid
+
+# Telegram recipients
+cat /var/www/html/cgi-bin/telegram_user.json
+
+# Weekly report logs
+tail -50 /var/log/tesla_rapport.log
+
+# Active crontab
+crontab -l
+
+# Manual report test
+php /var/www/html/tesla_rapport_hebdo.php
+
+# Listen to MQTT topic
+mosquitto_sub -t "teslamate/tmy" -v
+```
+
+---
+
+## Interactions with TeslaMate
+
+TeslaMate Mail interacts with TeslaMate in a **strictly non-destructive** way:
+- Removal of comments from `docker-compose.yml` (once, at installation)
+- Read-only access to the PostgreSQL database
+- No modification of TeslaMate data
+
+---
 
 ## Tesla Referral
-If you enjoy this free GNU development, feel free to use the Tesla referral link at the bottom of the main page. It is always a helpful boost to continue and evolve the project. A huge thank you in advance!
 
-===============================================================================
+If you find this free open-source project useful, feel free to use the Tesla referral link at the bottom of the main page — it's a welcome boost to keep the project evolving. Thank you!
 
-About the License
-Copyleft Obligation: Any modification must remain under the GPL license.
+---
 
-Source Code Access: Obligation to provide the source code.
+## Acknowledgements
 
-No Warranty: Distributed without any warranty.
+- **Jérôme Y.** — debugging and new feature ideas
+- **Facebook Group Tesla Model Y - France** — feedback and support
+
+---
+
+## License
+
+This program is distributed under the **GNU GPL v3** license.
+
+1. **Copyleft**: any modification must remain under the GPL license
+2. **Source code**: obligation to provide it upon redistribution
+3. **No warranty**: distributed as-is, without any warranty of any kind
+
+---
+
+*TeslaMate Mail — monwifi.fr / Eric B. — 2026*
