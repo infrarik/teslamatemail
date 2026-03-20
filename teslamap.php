@@ -236,9 +236,12 @@ try {
         label { display: block; font-size: 10px; color: #888; text-transform: uppercase; margin: 10px 0 5px; }
         .input-field { width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px; }
         
-        .btn-action { display: block; padding: 12px; margin: 5px 0; border-radius: 6px; text-align: center; text-decoration: none; font-weight: bold; font-size: 11px; text-transform: uppercase; cursor: pointer; border: none; width: 100%; color: white; }
+        .btn-action { display: flex; align-items: center; justify-content: center; padding: 12px 8px; border-radius: 10px; text-align: center; text-decoration: none; font-weight: bold; font-size: 11px; text-transform: uppercase; cursor: pointer; border: none; color: white; white-space: normal; line-height: 1.3; }
         .btn-kml { background: #dc2626; } .btn-3d { background: #3b82f6; } .btn-2d { background: #444; }
-        .btn-full-day { background: #444; } .btn-full-day.active { background: #059669; }
+        .btn-full-day { background: #059669; } .btn-full-day.active { background: #059669; border: 2px solid #fff; }
+        #btn-actions-row { display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 8px; }
+        #btn-actions-row .btn-action { flex: 1; min-height: 60px; }
+        .btn-full-day { min-height: 60px; width: 100%; }
         
         .summary-day { background: #059669; color: white; padding: 15px; margin: 10px; border-radius: 8px; text-align: center; }
         .trajet-card { background: #2a2a2a; border-radius: 8px; padding: 15px; margin: 10px; cursor: pointer; border: 2px solid transparent; }
@@ -276,6 +279,7 @@ try {
         .pause-marker { background: #3b82f6; border: 2px solid #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         .charge-marker { background: #f59e0b; border: 2px solid #fff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 0 10px rgba(245,158,11,0.6); cursor: pointer; }
         .snap-btn { position: absolute; top: 15px; right: 50px; z-index: 1000; padding: 8px 12px; background: rgba(5, 150, 105, 0.85); color: white; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); }
+        #sidebar-toggle { display: none; }
 
         /* ===== RESPONSIVE MOBILE / TABLETTE ===== */
         @media (max-width: 768px) {
@@ -290,6 +294,39 @@ try {
                 border-bottom: 2px solid #333;
                 overflow-y: auto;
                 flex-shrink: 0;
+                transition: max-height 0.35s ease, border-bottom 0.35s ease;
+            }
+            /* Sidebar réduite */
+            #sidebar.collapsed {
+                max-height: 0 !important;
+                overflow: hidden;
+                border-bottom: none;
+            }
+
+            /* Bouton toggle sidebar : fixe dans la carte, sous info-box, au-dessus du contrôle Leaflet */
+            #sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                top: 50px;
+                right: 10px;
+                z-index: 500;
+                width: 36px;
+                height: 36px;
+                background: rgba(30,30,30,0.92);
+                border-radius: 8px;
+                cursor: pointer;
+                border: 1px solid #444;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            }
+            #sidebar-toggle svg {
+                width: 16px; height: 16px;
+                stroke: #dc2626; fill: none; stroke-width: 2.5;
+                transition: transform 0.35s ease;
+            }
+            #sidebar-toggle.collapsed svg {
+                transform: rotate(180deg);
             }
 
             /* Header plus compact */
@@ -304,18 +341,7 @@ try {
             label { margin: 6px 0 3px; font-size: 9px; }
             .input-field { padding: 8px 10px; font-size: 14px; margin-bottom: 6px; }
 
-            /* Boutons action : rangée horizontale scrollable */
-            .header > div[style*="margin-top:10px"] { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-            .btn-action { 
-                display: inline-block !important; 
-                width: auto !important; 
-                padding: 9px 12px; 
-                font-size: 10px; 
-                white-space: nowrap; 
-                flex-shrink: 0;
-                margin: 0 !important;
-            }
-            .btn-full-day { width: 100% !important; display: block !important; margin: 0 0 4px !important; }
+            /* pas d'override btn-full-day sur mobile, le desktop gère */
 
             /* Liste des trajets : horizontale scrollable */
             #sidebar > div[style*="flex:1"] {
@@ -364,13 +390,8 @@ try {
             #info-box span.item { margin: 0 4px; }
             #info-box .stats-divider { display: none; }
 
-            /* Légende vitesse : repositionnée en bas à droite, plus petite */
-            #speed-legend {
-                bottom: 80px;
-                right: 10px;
-                font-size: 10px;
-                padding: 8px;
-            }
+            /* Légende vitesse : masquée sur mobile (trop encombrante) */
+            #speed-legend { display: none !important; }
 
             /* Replay bar : plus compacte, centrée en bas */
             #replay-bar {
@@ -385,8 +406,8 @@ try {
             /* Snap button */
             .snap-btn { top: auto; bottom: 90px; right: 10px; font-size: 10px; padding: 7px 10px; }
 
-            /* Contrôle couches Leaflet : déplacé plus haut pour ne pas chevaucher replay */
-            .leaflet-top.leaflet-right { top: 8px; }
+            /* Contrôle couches Leaflet : décalé sous le bouton toggle */
+            .leaflet-top.leaflet-right { top: 96px; }
         }
 
         /* Petits mobiles */
@@ -394,6 +415,7 @@ try {
             #sidebar { max-height: 45vh; }
             #info-box { font-size: 10px; }
             .trajet-card { min-width: 115px; font-size: 12px; }
+            .leaflet-top.leaflet-right { top: 100px; }
         }
     </style>
 </head>
@@ -435,7 +457,7 @@ try {
         <a href="?car_id=<?= $selected_car_id ?>&date=<?= $selected_date ?>&full_day=1" class="btn-action btn-full-day <?= ($is_full_day && !$selected_drive_id) ? 'active' : '' ?>"><?= $txt['btn_full_day'] ?></a>
         
         <?php if (!empty($positions)): ?>
-            <div style="margin-top:10px;">
+            <div id="btn-actions-row" style="margin-top:10px;">
                 <a href="?export_kml=1&<?= $selected_drive_id ? "drive_id=$selected_drive_id" : "car_id=$selected_car_id&date=$selected_date" ?>" class="btn-action btn-kml"><?= $txt['btn_kml'] ?></a>
                 <button id="btnShow3D" class="btn-action btn-3d" onclick="toggleVision('3D')"><?= $txt['btn_3d'] ?></button>
                 <button id="btnShow2D" class="btn-action btn-2d" style="display:none;" onclick="toggleVision('2D')"><?= $txt['btn_2d'] ?></button>
@@ -465,6 +487,9 @@ try {
 </div>
 
 <div id="main-viz">
+    <button id="sidebar-toggle" onclick="toggleSidebar()" title="Masquer/afficher le panneau">
+        <svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <button class="snap-btn" onclick="takeSnapshot()"><?= $txt['btn_snap'] ?></button>
     
     <div id="info-box">
@@ -800,6 +825,16 @@ try {
         const canvas = await html2canvas(document.getElementById('map'), { useCORS: true });
         const link = document.createElement('a');
         link.download = 'tesla_snap.png'; link.href = canvas.toDataURL(); link.click();
+    }
+
+    // --- Toggle sidebar mobile ---
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const btn     = document.getElementById('sidebar-toggle');
+        sidebar.classList.toggle('collapsed');
+        btn.classList.toggle('collapsed');
+        // Forcer Leaflet à recalculer la taille de la carte après l'animation
+        setTimeout(() => { if(typeof map !== 'undefined') map.invalidateSize(); }, 370);
     }
 </script>
 </body>
