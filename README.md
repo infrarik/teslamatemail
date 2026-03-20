@@ -9,6 +9,18 @@ Licence GNU GPL v3 — Logiciel libre, sans garantie.
 
 ---
 
+## 🆕 Nouveautés récentes
+
+- **Prix du kWh par lieu** : il est maintenant possible de définir un prix du kWh différent pour chaque lieu (geofence). Le prix est mémorisé automatiquement par lieu et appliqué dans tous les calculs, rapports et exports. Si aucun prix spécifique n'est défini pour un lieu, le prix général est utilisé.
+- **Mémorisation du prix du kWh** : le prix saisi est automatiquement sauvegardé et pré-rempli à chaque visite.
+- **Rapports email enrichis** : l'envoi par email produit désormais un rapport HTML mis en page avec un **PDF en pièce jointe**, généré sans aucune dépendance externe. Cela s'applique aussi bien à l'envoi manuel depuis le calculateur qu'au rapport hebdomadaire automatique.
+- **Consommation aux 100 km** : affichée dans les résultats, les PDF, les emails et les rapports automatiques.
+- **Rapport hebdomadaire automatique** : envoi chaque lundi à 4h du matin de la semaine précédente, activable/désactivable depuis l'interface sans toucher à la configuration système.
+- **Carte des altitudes (3D) enrichie** : les points de départ, d'arrivée, les pauses et les charges affichent une infobulle complète avec l'heure, l'altitude, la température et la ville (géocodage automatique via OpenStreetMap). Chaque point de la trace affiche également ces informations au survol.
+- **Interface mobile améliorée** : panneau d'informations rétractable d'un simple bouton pour maximiser la carte sur petit écran.
+
+---
+
 ## Sommaire
 
 - [Fonctionnalités](#fonctionnalités)
@@ -241,6 +253,18 @@ GNU GPL v3 License — Free software, no warranty.
 🇫🇷 **[Version française — cliquez ici](#teslamate-mail)**
 
 > **Note:** TeslaMate Mail has no official connection with the TeslaMate project. It is strictly an add-on that uses an existing TeslaMate installation, without ever modifying its database.
+
+---
+
+## 🆕 Recent Updates
+
+- **Per-location kWh pricing**: it is now possible to set a different kWh price for each location (geofence). The price is automatically saved per location and applied across all calculations, reports and exports. If no specific price is defined for a location, the general price is used.
+- **kWh price memory**: the price entered is automatically saved and pre-filled on every visit.
+- **Enhanced email reports**: sending by email now produces a formatted HTML report with a **PDF attachment**, generated without any external dependency. This applies to both manual sending from the calculator and the automatic weekly report.
+- **Consumption per 100 km**: displayed in results, PDFs, emails and automatic reports.
+- **Automatic weekly report**: sent every Monday at 4:00 AM covering the previous week, can be enabled or disabled directly from the interface without touching system configuration.
+- **Enriched altitude map (3D)**: departure, arrival, parking stops and charging markers now display a full tooltip with time, altitude, temperature and city name (automatic geocoding via OpenStreetMap). Each point on the track also shows this information on hover.
+- **Improved mobile interface**: collapsible information panel with a single button to maximize the map on small screens.
 
 ---
 
