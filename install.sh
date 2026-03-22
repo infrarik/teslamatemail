@@ -190,6 +190,20 @@ touch /var/log/tesla_rapport.log
 chmod 666 /var/log/tesla_rapport.log
 echo -e "   ${CYAN}Log : /var/log/tesla_rapport.log${NC}"
 
+# Configuration logrotate
+cat > /etc/logrotate.d/teslamate-mail << 'EOF'
+/var/log/tesla_rapport.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 666 root root
+}
+EOF
+echo -e "   ${CYAN}→ Logrotate configuré (hebdo, 12 semaines)${NC}"
+
 # ============================================================================
 # ÉTAPE 7 : Installation du cron hebdomadaire (fixe, activé via setup)
 # ============================================================================
@@ -443,6 +457,20 @@ echo -e "${GREEN}[6/8] Création du fichier de log${NC}"
 touch /var/log/tesla_rapport.log
 chmod 666 /var/log/tesla_rapport.log
 echo -e "   ${CYAN}Log créé : /var/log/tesla_rapport.log${NC}"
+
+# Configuration logrotate
+cat > /etc/logrotate.d/teslamate-mail << 'EOF'
+/var/log/tesla_rapport.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 666 root root
+}
+EOF
+echo -e "   ${CYAN}→ Logrotate configuré (hebdo, 12 semaines)${NC}"
 
 # ============================================================================
 # ÉTAPE 7 : Installation du cron hebdomadaire
