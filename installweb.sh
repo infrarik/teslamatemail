@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script de déploiement WEB uniquement — TeslaMate Mail
-# Version 3.5
+# Version 3.7 - Ajout auth.php et auth_check.php, permissions setup 664
 #
 # Déploie les fichiers PHP sans reconfigurer Postfix ni les dépendances.
 # Utile pour une mise à jour ou un redéploiement rapide.
@@ -27,7 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ZIP_FILE="$SCRIPT_DIR/$ARCHIVE"
 
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║     Déploiement Web TeslaMate Mail v3.6               ║${NC}"
+echo -e "${CYAN}║     Déploiement Web TeslaMate Mail v3.7               ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -98,7 +98,7 @@ add_if_missing "telegram_enabled"    "False"
 add_if_missing "mqtt_enabled"        "False"
 
 chown www-data:www-data "$SETUP_FILE"
-chmod 640 "$SETUP_FILE"
+chmod 664 "$SETUP_FILE"
 echo -e "   ${CYAN}→ cgi-bin/setup OK${NC}"
 
 # ============================================================================

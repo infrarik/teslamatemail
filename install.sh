@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script d'installation COMPLET TeslaMate Mail
-# Version 3.5 - Rapport hebdomadaire automatique
+# Version 3.7 - Ajout auth.php et auth_check.php, permissions setup 664
 #
 # Ce script fait TOUT :
 # - Installation des dépendances
@@ -31,7 +31,7 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.6                  ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.7                  ║${NC}"
 echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -179,7 +179,7 @@ RAPPORT_HEBDO=False
 EOF
 
 chown www-data:www-data "$SETUP_FILE"
-chmod 640 "$SETUP_FILE"
+chmod 664 "$SETUP_FILE"
 echo -e "   ${CYAN}→ cgi-bin/setup écrit${NC}"
 
 # ============================================================================
@@ -279,7 +279,7 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.3                  ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.7                  ║${NC}"
 echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -434,7 +434,7 @@ CURRENCY=EUR
 EOF
 
 chown www-data:www-data "$SETUP_FILE"
-chmod 640 "$SETUP_FILE"
+chmod 664 "$SETUP_FILE"
 
 # ============================================================================
 # ÉTAPE 6 : Création du fichier de log
