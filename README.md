@@ -14,8 +14,16 @@ Licence GNU GPL v3 — Logiciel libre, sans garantie.
 - **Prix du kWh par lieu** : il est maintenant possible de définir un prix du kWh différent pour chaque lieu (geofence). Le prix est mémorisé automatiquement par lieu et appliqué dans tous les calculs, rapports et exports. Si aucun prix spécifique n'est défini pour un lieu, le prix général est utilisé.
 - **Mémorisation du prix du kWh** : le prix saisi est automatiquement sauvegardé et pré-rempli à chaque visite.
 - **Rapports email enrichis** : l'envoi par email produit désormais un rapport HTML mis en page avec un **PDF en pièce jointe**, généré sans aucune dépendance externe. Cela s'applique aussi bien à l'envoi manuel depuis le calculateur qu'au rapport hebdomadaire automatique.
+- **Graphique de consommation dans les PDF** : les rapports PDF incluent désormais un graphique à barres de la consommation journalière, inséré entre les KPIs et le tableau de détail.
 - **Consommation aux 100 km** : affichée dans les résultats, les PDF, les emails et les rapports automatiques.
 - **Rapport hebdomadaire automatique** : envoi chaque lundi à 4h du matin de la semaine précédente, activable/désactivable depuis l'interface sans toucher à la configuration système.
+- **Niveau de batterie sur les charges** : les marqueurs ⚡ affichent désormais le niveau de batterie au début et à la fin de chaque charge, sur la carte 2D (popup au clic) et sur la carte 3D (infobulle au survol).
+- **Niveau de batterie en temps réel** : au survol de la trace sur la carte 2D, le niveau de batterie s'affiche dans la barre d'information. Chaque point de la trace 3D l'affiche également en infobulle.
+- **Marqueurs altitude max/min** : un cercle rouge **+** indique le point le plus haut du trajet, un cercle bleu **−** le point le plus bas, sur les deux cartes. Altitude, heure et température sont affichés au clic ou au survol.
+- **Analyse de conduite** : un panneau flottant et déplaçable affiche un score éco (0-100), les accélérations et freinages brusques détectés, le pourcentage de temps à haute vitesse et une consommation estimée. Disponible sur trajet individuel ou journée entière.
+- **Contrôles sidebar repliables** : sur PC, une flèche permet de masquer le sélecteur de véhicule, la date et les boutons pour maximiser la liste des trajets.
+- **Sécurité PIN renforcée** : le code PIN est désormais vérifié côté serveur, invisible dans le source de la page. Après 3 tentatives incorrectes, l'accès est bloqué 5 minutes avec un compte à rebours affiché.
+- **Compatibilité navigateur Tesla** : la saisie des dates utilise un numpad tactile et les listes déroulantes sont remplacées par des listes scrollables cliquables, adaptées au navigateur embarqué de la Tesla.
 - **Carte des altitudes (3D) enrichie** : les points de départ, d'arrivée, les pauses et les charges affichent une infobulle complète avec l'heure, l'altitude, la température et la ville (géocodage automatique via OpenStreetMap). Chaque point de la trace affiche également ces informations au survol.
 - **Interface mobile améliorée** : panneau d'informations rétractable d'un simple bouton pour maximiser la carte sur petit écran.
 
@@ -261,8 +269,16 @@ GNU GPL v3 License — Free software, no warranty.
 - **Per-location kWh pricing**: it is now possible to set a different kWh price for each location (geofence). The price is automatically saved per location and applied across all calculations, reports and exports. If no specific price is defined for a location, the general price is used.
 - **kWh price memory**: the price entered is automatically saved and pre-filled on every visit.
 - **Enhanced email reports**: sending by email now produces a formatted HTML report with a **PDF attachment**, generated without any external dependency. This applies to both manual sending from the calculator and the automatic weekly report.
+- **Consumption chart in PDFs**: PDF reports now include a daily consumption bar chart, inserted between the KPIs and the detail table.
 - **Consumption per 100 km**: displayed in results, PDFs, emails and automatic reports.
 - **Automatic weekly report**: sent every Monday at 4:00 AM covering the previous week, can be enabled or disabled directly from the interface without touching system configuration.
+- **Battery level on charging markers**: ⚡ markers now display the battery level at the start and end of each charging session, on the 2D map (popup on click) and the 3D map (tooltip on hover).
+- **Real-time battery level**: when hovering over the track on the 2D map, the battery level is shown in the info bar. Each point on the 3D track also displays it in a tooltip.
+- **Altitude max/min markers**: a red **+** circle marks the highest point of the trip, a blue **−** circle the lowest, on both maps. Altitude, time and temperature are shown on click or hover.
+- **Driving analysis**: a floating, draggable panel displays an eco score (0–100), detected hard accelerations and brakings, percentage of time at high speed and an estimated consumption. Available for individual trips or full-day view.
+- **Collapsible sidebar controls**: on desktop, an arrow allows hiding the vehicle selector, date picker and action buttons to maximize the trip list.
+- **Strengthened PIN security**: the PIN code is now verified server-side, invisible in the page source. After 3 incorrect attempts, access is blocked for 5 minutes with a countdown displayed.
+- **Tesla browser compatibility**: date entry uses a touch numpad and dropdown lists are replaced by scrollable clickable lists, adapted to the Tesla's built-in browser.
 - **Enriched altitude map (3D)**: departure, arrival, parking stops and charging markers now display a full tooltip with time, altitude, temperature and city name (automatic geocoding via OpenStreetMap). Each point on the track also shows this information on hover.
 - **Improved mobile interface**: collapsible information panel with a single button to maximize the map on small screens.
 
