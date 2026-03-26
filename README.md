@@ -229,7 +229,6 @@ Si ce développement libre vous est utile, n'hésitez pas à utiliser le lien de
 ## Remerciements
 
 - **Jérôme Y.** — débogage et idées de nouvelles fonctionnalités
-- **Groupe Facebook Tesla Model Y - France** — retours et soutien
 
 ---
 
@@ -484,7 +483,6 @@ If you find this free open-source project useful, feel free to use the Tesla ref
 ## Acknowledgements
 
 - **Jérôme Y.** — debugging and new feature ideas
-- **Facebook Group Tesla Model Y - France** — feedback and support
 
 ---
 
