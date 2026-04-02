@@ -5,6 +5,7 @@
 ZIP="/tmp/files.zip"
 WEBROOT="/var/www/html"
 SETUP="$WEBROOT/cgi-bin/setup"
+VERSION_DEST="$WEBROOT/cgi-bin/version"
 TMPDIR="/tmp/teslamate_update"
 
 echo "=== TeslaMate Mail Update ==="
@@ -48,25 +49,34 @@ mkdir -p "$TMPDIR"
 unzip -q "$ZIP" -d "$TMPDIR"
 echo "ZIP extrait dans $TMPDIR"
 
-# --- 3. Sauvegarde du setup existant ---
+# --- 3. Copie directe du fichier version ---
+VERSION_IN_ZIP=$(unzip -l "$ZIP" | grep "cgi-bin/version" | awk '{print $NF}')
+if [ -n "$VERSION_IN_ZIP" ]; then
+    unzip -p "$ZIP" "$VERSION_IN_ZIP" > "$VERSION_DEST"
+    echo "Version installée : $(cat $VERSION_DEST)"
+else
+    echo "Pas de fichier version dans le zip"
+fi
+
+# --- 4. Sauvegarde du setup existant ---
 if [ -f "$SETUP" ]; then
     cp "$SETUP" "$SETUP.bak"
     echo "Setup sauvegardé : $SETUP.bak"
 fi
 
-# --- 4. Copie des fichiers web (SANS cgi-bin/setup) ---
+# --- 5. Copie des fichiers web (SANS cgi-bin/setup et cgi-bin/version) ---
 echo "Copie des fichiers vers $WEBROOT..."
 find "$TMPDIR" -type f | while read src; do
     rel="${src#$TMPDIR/}"
-    # Ignorer les fichiers hors www/ (install.sh, README.md, etc.)
+    # Ignorer les fichiers hors www/
     if [[ "$rel" != www/* ]]; then
         echo "  IGNORÉ (hors www) : $rel"
         continue
     fi
     # Stripper le préfixe www/
     rel="${rel#www/}"
-    # Ignorer le setup du zip
-    if [[ "$rel" == "cgi-bin/setup" ]]; then
+    # Ignorer setup et version (traités séparément)
+    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == "cgi-bin/version" ]]; then
         echo "  IGNORÉ : $rel"
         continue
     fi
@@ -76,41 +86,29 @@ find "$TMPDIR" -type f | while read src; do
     echo "  OK : $rel"
 done
 
-# --- 5. Mise à jour du setup : ajout des clés manquantes ---
+# --- 6. Mise à jour du setup : ajout des clés manquantes ---
 echo "Vérification des clés setup..."
-
-# Chercher le setup de référence dans le zip
 ZIP_SETUP=$(find "$TMPDIR" -name "setup" -path "*/cgi-bin/*" | head -1)
 
 if [ -z "$ZIP_SETUP" ]; then
     echo "Pas de setup de référence dans le zip, on passe."
 else
-    # Pour chaque clé du setup de référence
     while IFS='=' read -r key value; do
-        # Ignorer les commentaires et lignes vides
         [[ "$key" =~ ^#.*$ ]] && continue
         [[ -z "$key" ]] && continue
-
         key_lower=$(echo "$key" | tr '[:upper:]' '[:lower:]' | xargs)
-
-        # Ignorer github_sha et github_size (gérés par tesla.php)
         [[ "$key_lower" == "github_sha" ]] && continue
         [[ "$key_lower" == "github_size" ]] && continue
-
-        # Si la clé existe déjà → on n'y touche pas
         if grep -qi "^${key_lower}\s*=" "$SETUP" 2>/dev/null; then
             echo "  EXISTE déjà : $key_lower"
             continue
         fi
-
-        # Clé manquante → on l'ajoute avec la valeur par défaut du zip
         echo "$key_lower=$value" >> "$SETUP"
         echo "  AJOUTÉ : $key_lower=$value"
-
     done < "$ZIP_SETUP"
 fi
 
-# --- 6. Mise à jour de la date dans le setup ---
+# --- 7. Mise à jour de la date dans le setup ---
 DATE_NOW=$(date '+%Y-%m-%d %H:%M:%S')
 if grep -q "^### TeslaMate Config Updated" "$SETUP"; then
     sed -i "s|^### TeslaMate Config Updated.*|### TeslaMate Config Updated - $DATE_NOW ###|" "$SETUP"
@@ -119,17 +117,16 @@ else
 fi
 echo "Date mise à jour dans setup : $DATE_NOW"
 
-# --- 7. Redémarrage Apache si des corrections ont été appliquées ---
+# --- 8. Redémarrage Apache si nécessaire ---
 if ! php -r "curl_init();" 2>/dev/null || ! grep -q "PrivateTmp=false" "$OVERRIDE" 2>/dev/null; then
     echo "Redémarrage Apache..."
     systemctl restart apache2
     echo "Apache redémarré"
 fi
 
-# --- 8. Nettoyage ---
+# --- 9. Nettoyage (répertoire temporaire uniquement) ---
 rm -rf "$TMPDIR"
-rm -f "$ZIP"
-rm -f "/tmp/installweb.sh"
-echo "Nettoyage /tmp effectué"
+echo "Répertoire temporaire supprimé"
+echo "files.zip et installweb.sh conservés dans /tmp"
 
 echo "=== Mise à jour terminée ==="
