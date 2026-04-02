@@ -50,9 +50,8 @@ unzip -q "$ZIP" -d "$TMPDIR"
 echo "ZIP extrait dans $TMPDIR"
 
 # --- 3. Copie directe du fichier version ---
-VERSION_IN_ZIP=$(unzip -l "$ZIP" | grep "cgi-bin/version" | awk '{print $NF}')
-if [ -n "$VERSION_IN_ZIP" ]; then
-    unzip -p "$ZIP" "$VERSION_IN_ZIP" > "$VERSION_DEST"
+if [ -f "$TMPDIR/www/cgi-bin/version" ]; then
+    cp "$TMPDIR/www/cgi-bin/version" "$VERSION_DEST"
     echo "Version installée : $(cat $VERSION_DEST)"
 else
     echo "Pas de fichier version dans le zip"
@@ -75,8 +74,8 @@ find "$TMPDIR" -type f | while read src; do
     fi
     # Stripper le préfixe www/
     rel="${rel#www/}"
-    # Ignorer setup et version (traités séparément)
-    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == "cgi-bin/version" ]]; then
+    # Ignorer setup, version et lastchargeid (traités séparément ou préservés)
+    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == "cgi-bin/version" ]] || [[ "$rel" == "cgi-bin/lastchargeid" ]]; then
         echo "  IGNORÉ : $rel"
         continue
     fi
@@ -130,3 +129,4 @@ echo "Répertoire temporaire supprimé"
 echo "files.zip et installweb.sh conservés dans /tmp"
 
 echo "=== Mise à jour terminée ==="
+
