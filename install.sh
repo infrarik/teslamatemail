@@ -84,7 +84,7 @@ KWH_PRICE=${KWH_PRICE:-0.0000}
 echo -e "${GREEN}[1/8] Installation des dépendances système${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
-apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring \
+apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring php-curl \
     postgresql-client unzip zip curl wget logrotate net-tools \
     postfix mailutils libsasl2-2 libsasl2-modules ca-certificates mosquitto-clients
 
