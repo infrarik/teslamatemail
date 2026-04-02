@@ -34,6 +34,7 @@ Licence GNU GPL v3 — Logiciel libre, sans garantie.
 - **Sécurité PIN renforcée** : vérification côté serveur, invisible dans la source. Blocage 5 minutes après 3 tentatives incorrectes avec compte à rebours.
 - **Carte des altitudes (3D) enrichie** : infobulles complètes sur tous les marqueurs avec heure, altitude, température et ville (géocodage automatique Nominatim).
 - **Interface mobile améliorée** : panneau d'informations rétractable d'un bouton.
+- **Détection automatique des mises à jour** : l'écran principal vérifie silencieusement si une nouvelle version est disponible sur GitHub. Un bandeau jaune s'affiche avec un bouton **Mettre à jour** qui télécharge automatiquement les fichiers dans `/tmp`.
 
 ---
 
@@ -128,6 +129,13 @@ Licence GNU GPL v3 — Logiciel libre, sans garantie.
 - Interface bilingue **Français / Anglais**
 - **Compatibilité Tesla** : numpad tactile forcé pour la saisie de dates, détection fiable du navigateur embarqué
 
+### 🔄 Mises à jour automatiques
+
+- L'écran principal (`tesla.php`) vérifie silencieusement la disponibilité d'une mise à jour via l'API GitHub (sans télécharger le zip)
+- Un bandeau jaune **🔄 Mise à jour disponible** s'affiche avec un bouton **Mettre à jour**
+- Au clic, `files.zip` et `installweb.sh` sont téléchargés automatiquement dans `/tmp`
+- Il suffit ensuite de lancer `bash /tmp/installweb.sh` depuis le serveur pour finaliser la mise à jour
+
 ---
 
 ## Prérequis
@@ -153,12 +161,13 @@ bash install.sh
 ```
 
 Le script `install.sh` effectue automatiquement :
-- Installation des dépendances (Apache, PHP, Postfix, etc.)
+- Installation des dépendances (Apache, PHP, php-curl, Postfix, etc.)
 - Configuration Postfix (SMTP sortant)
 - Déploiement des fichiers web dans `/var/www/html`
 - Écriture de `cgi-bin/setup` avec votre configuration (email, prix kWh, etc.)
 - Création du fichier de log `/var/log/tesla_rapport.log`
 - Installation du **cron hebdomadaire** (lundi 4h)
+- Désactivation de `PrivateTmp` pour Apache (nécessaire pour la mise à jour via `/tmp`)
 
 ```bash
 # 3. Accédez à l'interface
@@ -171,14 +180,26 @@ Configurez TeslaMate Mail via la roue dentée de l'écran principal.
 
 ## Mise à jour
 
-Lorsqu'un nouveau `files.zip` est disponible :
+### Méthode 1 — Depuis l'interface (recommandée)
+
+1. Ouvrez `tesla.php` — si une mise à jour est disponible, un bandeau jaune **🔄 Mise à jour disponible** s'affiche
+2. Cliquez sur **Mettre à jour** — `files.zip` et `installweb.sh` sont téléchargés automatiquement dans `/tmp`
+3. Connectez-vous au serveur et lancez :
 
 ```bash
-# Depuis /root
+cd /tmp
 bash installweb.sh
 ```
 
-Ce script met à jour tous les fichiers PHP **sans jamais toucher à votre configuration** (`cgi-bin/setup` est préservé, les clés manquantes sont ajoutées automatiquement).
+### Méthode 2 — Manuellement
+
+```bash
+# Téléchargez le nouveau files.zip dans /tmp, puis :
+cd /tmp
+bash installweb.sh
+```
+
+Le script `installweb.sh` met à jour tous les fichiers PHP **sans jamais toucher à votre configuration** (`cgi-bin/setup` est préservé, les clés manquantes sont ajoutées automatiquement). Il vérifie et corrige également la présence de `php-curl` et la configuration `PrivateTmp` d'Apache si nécessaire.
 
 ---
 
@@ -198,6 +219,8 @@ Toute la configuration est centralisée dans `/var/www/html/cgi-bin/setup` :
 | `telegram_enabled` | `True` / `False` |
 | `mqtt_enabled` | `True` / `False` |
 | `code` | Code PIN d'accès (4 chiffres) |
+| `github_sha` | SHA du dernier zip installé (géré automatiquement) |
+| `github_size` | Taille du dernier zip installé (géré automatiquement) |
 
 ---
 
@@ -224,6 +247,12 @@ php /var/www/html/tesla_rapport_hebdo.php
 
 # Écouter le topic MQTT
 mosquitto_sub -t "teslamate/tmy" -v
+
+# Vérifier la config PrivateTmp Apache
+cat /etc/systemd/system/apache2.service.d/override.conf
+
+# Vérifier php-curl
+php -r "curl_init(); echo 'curl OK';"
 ```
 
 ---
@@ -304,6 +333,7 @@ GNU GPL v3 License — Free software, no warranty.
 - **Strengthened PIN security**: server-side verification, invisible in page source. 5-minute lockout after 3 failed attempts with countdown display.
 - **Enriched altitude map (3D)**: full tooltips on all markers with time, altitude, temperature and city (automatic Nominatim geocoding).
 - **Improved mobile interface**: collapsible info panel with a single button.
+- **Automatic update detection**: the main screen silently checks whether a new version is available on GitHub. A yellow banner appears with an **Update** button that automatically downloads the files to `/tmp`.
 
 ---
 
@@ -398,6 +428,13 @@ GNU GPL v3 License — Free software, no warranty.
 - **French / English** bilingual interface
 - **Tesla compatibility**: forced touch numpad for date entry, reliable embedded browser detection
 
+### 🔄 Automatic Updates
+
+- The main screen (`tesla.php`) silently checks for available updates via the GitHub API (without downloading the zip)
+- A yellow **🔄 Update available** banner appears with an **Update** button
+- On click, `files.zip` and `installweb.sh` are automatically downloaded to `/tmp`
+- Simply run `bash /tmp/installweb.sh` on the server to complete the update
+
 ---
 
 ## Prerequisites
@@ -423,12 +460,13 @@ bash install.sh
 ```
 
 The `install.sh` script automatically handles:
-- Dependency installation (Apache, PHP, Postfix, etc.)
+- Dependency installation (Apache, PHP, php-curl, Postfix, etc.)
 - Postfix configuration (outgoing SMTP)
 - Web file deployment to `/var/www/html`
 - Writing `cgi-bin/setup` with your configuration (email, kWh price, etc.)
 - Creating the log file `/var/log/tesla_rapport.log`
 - Installing the **weekly cron job** (Monday 4am)
+- Disabling `PrivateTmp` for Apache (required for updates via `/tmp`)
 
 ```bash
 # 3. Access the interface
@@ -441,14 +479,26 @@ Configure TeslaMate Mail via the gear icon on the main screen.
 
 ## Update
 
-When a new `files.zip` is available:
+### Method 1 — From the interface (recommended)
+
+1. Open `tesla.php` — if an update is available, a yellow **🔄 Update available** banner appears
+2. Click **Update** — `files.zip` and `installweb.sh` are automatically downloaded to `/tmp`
+3. Connect to the server and run:
 
 ```bash
-# From /root
+cd /tmp
 bash installweb.sh
 ```
 
-This script updates all PHP files **without ever touching your configuration** (`cgi-bin/setup` is preserved, any missing keys are added automatically).
+### Method 2 — Manually
+
+```bash
+# Download the new files.zip to /tmp, then:
+cd /tmp
+bash installweb.sh
+```
+
+The `installweb.sh` script updates all PHP files **without ever touching your configuration** (`cgi-bin/setup` is preserved, any missing keys are added automatically). It also checks and fixes `php-curl` and Apache `PrivateTmp` configuration if needed.
 
 ---
 
@@ -468,6 +518,8 @@ All configuration is centralized in `/var/www/html/cgi-bin/setup`:
 | `telegram_enabled` | `True` / `False` |
 | `mqtt_enabled` | `True` / `False` |
 | `code` | 4-digit access PIN code |
+| `github_sha` | SHA of the last installed zip (managed automatically) |
+| `github_size` | Size of the last installed zip (managed automatically) |
 
 ---
 
@@ -494,6 +546,12 @@ php /var/www/html/tesla_rapport_hebdo.php
 
 # Listen to MQTT topic
 mosquitto_sub -t "teslamate/tmy" -v
+
+# Check Apache PrivateTmp config
+cat /etc/systemd/system/apache2.service.d/override.conf
+
+# Check php-curl
+php -r "curl_init(); echo 'curl OK';"
 ```
 
 ---
