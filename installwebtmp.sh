@@ -1,7 +1,6 @@
 #!/bin/bash
 # installweb.sh - Mise à jour TeslaMate Mail depuis /tmp/files.zip
 # Ne modifie JAMAIS les valeurs existantes dans cgi-bin/setup
-# téléchargez files.zip dans /tmp et lancez bash /tmp/installwebtmp.sh
 
 ZIP="/tmp/files.zip"
 WEBROOT="/var/www/html"
