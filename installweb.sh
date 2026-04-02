@@ -21,6 +21,27 @@ if ! command -v unzip &>/dev/null; then
     exit 1
 fi
 
+# Vérification php-curl
+if ! php -r "curl_init();" 2>/dev/null; then
+    echo "php-curl manquant, installation..."
+    apt install -y php-curl
+    echo "php-curl installé"
+else
+    echo "php-curl : OK"
+fi
+
+# Vérification PrivateTmp Apache (accès /tmp depuis PHP)
+OVERRIDE="/etc/systemd/system/apache2.service.d/override.conf"
+if [ ! -f "$OVERRIDE" ] || ! grep -q "PrivateTmp=false" "$OVERRIDE"; then
+    echo "PrivateTmp non configuré, correction..."
+    mkdir -p /etc/systemd/system/apache2.service.d/
+    echo -e "[Service]\nPrivateTmp=false" > "$OVERRIDE"
+    systemctl daemon-reload
+    echo "PrivateTmp désactivé"
+else
+    echo "PrivateTmp=false : OK"
+fi
+
 # --- 2. Extraction du zip ---
 rm -rf "$TMPDIR"
 mkdir -p "$TMPDIR"
@@ -37,8 +58,15 @@ fi
 echo "Copie des fichiers vers $WEBROOT..."
 find "$TMPDIR" -type f | while read src; do
     rel="${src#$TMPDIR/}"
+    # Ignorer les fichiers hors www/ (install.sh, README.md, etc.)
+    if [[ "$rel" != www/* ]]; then
+        echo "  IGNORÉ (hors www) : $rel"
+        continue
+    fi
+    # Stripper le préfixe www/
+    rel="${rel#www/}"
     # Ignorer le setup du zip
-    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == */cgi-bin/setup ]]; then
+    if [[ "$rel" == "cgi-bin/setup" ]]; then
         echo "  IGNORÉ : $rel"
         continue
     fi
@@ -91,7 +119,14 @@ else
 fi
 echo "Date mise à jour dans setup : $DATE_NOW"
 
-# --- 7. Nettoyage ---
+# --- 7. Redémarrage Apache si des corrections ont été appliquées ---
+if ! php -r "curl_init();" 2>/dev/null || ! grep -q "PrivateTmp=false" "$OVERRIDE" 2>/dev/null; then
+    echo "Redémarrage Apache..."
+    systemctl restart apache2
+    echo "Apache redémarré"
+fi
+
+# --- 8. Nettoyage ---
 rm -rf "$TMPDIR"
 rm -f "$ZIP"
 rm -f "/tmp/installweb.sh"
