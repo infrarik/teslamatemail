@@ -57,13 +57,6 @@ ZIP_SETUP=$(find "$TMPDIR" -name "setup" -path "*/cgi-bin/*" | head -1)
 if [ -z "$ZIP_SETUP" ]; then
     echo "Pas de setup de référence dans le zip, on passe."
 else
-    # Lire les options activées dans le setup EXISTANT
-    mqtt_enabled=$(grep -i "^mqtt_enabled=True" "$SETUP" 2>/dev/null && echo "yes" || echo "no")
-    telegram_enabled=$(grep -i "^telegram_enabled=True" "$SETUP" 2>/dev/null && echo "yes" || echo "no")
-    email_enabled=$(grep -i "^email_enabled=True" "$SETUP" 2>/dev/null && echo "yes" || echo "no")
-
-    echo "  mqtt_enabled=$mqtt_enabled / telegram_enabled=$telegram_enabled / email_enabled=$email_enabled"
-
     # Pour chaque clé du setup de référence
     while IFS='=' read -r key value; do
         # Ignorer les commentaires et lignes vides
@@ -76,27 +69,13 @@ else
         [[ "$key_lower" == "github_sha" ]] && continue
         [[ "$key_lower" == "github_size" ]] && continue
 
-        # Vérifier si la clé existe déjà dans le setup existant
+        # Si la clé existe déjà → on n'y touche pas
         if grep -qi "^${key_lower}\s*=" "$SETUP" 2>/dev/null; then
             echo "  EXISTE déjà : $key_lower"
             continue
         fi
 
-        # Clés conditionnelles selon les options activées
-        if [[ "$key_lower" == mqtt_* ]] && [[ "$mqtt_enabled" == "no" ]]; then
-            echo "  IGNORÉ (mqtt désactivé) : $key_lower"
-            continue
-        fi
-        if [[ "$key_lower" == "telegram_bot_token" ]] && [[ "$telegram_enabled" == "no" ]]; then
-            echo "  IGNORÉ (telegram désactivé) : $key_lower"
-            continue
-        fi
-        if [[ "$key_lower" == "notification_email" ]] && [[ "$email_enabled" == "no" ]]; then
-            echo "  IGNORÉ (email désactivé) : $key_lower"
-            continue
-        fi
-
-        # Ajouter la clé manquante
+        # Clé manquante → on l'ajoute avec la valeur par défaut du zip
         echo "$key_lower=$value" >> "$SETUP"
         echo "  AJOUTÉ : $key_lower=$value"
 
