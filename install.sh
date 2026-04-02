@@ -180,6 +180,21 @@ EOF
 
 chown www-data:www-data "$SETUP_FILE"
 chmod 664 "$SETUP_FILE"
+
+# Récupération du sha/size GitHub pour éviter une fausse détection de MAJ
+GH_RAW=$(curl -s --range 0-500 \
+  -H "User-Agent: TeslaMateMailInstaller/1.0" \
+  "https://api.github.com/repos/infrarik/teslamatemail/contents/files.zip")
+GH_SHA=$(echo "$GH_RAW" | grep -o '"sha":"[^"]*"' | head -1 | cut -d'"' -f4)
+GH_SIZE=$(echo "$GH_RAW" | grep -o '"size":[0-9]*' | head -1 | cut -d':' -f2)
+if [ -n "$GH_SHA" ]; then
+    echo "github_sha=$GH_SHA" >> "$SETUP_FILE"
+    echo "github_size=$GH_SIZE" >> "$SETUP_FILE"
+    echo -e "   ${CYAN}→ github_sha/size enregistrés dans setup${NC}"
+else
+    echo -e "   ${YELLOW}⚠ Impossible de récupérer le sha GitHub (pas de réseau ?)${NC}"
+fi
+
 echo -e "   ${CYAN}→ cgi-bin/setup écrit${NC}"
 
 # ============================================================================
