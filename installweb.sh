@@ -50,8 +50,9 @@ unzip -q "$ZIP" -d "$TMPDIR"
 echo "ZIP extrait dans $TMPDIR"
 
 # --- 3. Copie directe du fichier version ---
-if [ -f "$TMPDIR/www/cgi-bin/version" ]; then
-    cp "$TMPDIR/www/cgi-bin/version" "$VERSION_DEST"
+VERSION_IN_ZIP=$(unzip -l "$ZIP" | grep "cgi-bin/version" | awk '{print $NF}')
+if [ -n "$VERSION_IN_ZIP" ]; then
+    unzip -p "$ZIP" "$VERSION_IN_ZIP" > "$VERSION_DEST"
     echo "Version installée : $(cat $VERSION_DEST)"
 else
     echo "Pas de fichier version dans le zip"
@@ -74,8 +75,8 @@ find "$TMPDIR" -type f | while read src; do
     fi
     # Stripper le préfixe www/
     rel="${rel#www/}"
-    # Ignorer setup, version et lastchargeid (traités séparément ou préservés)
-    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == "cgi-bin/version" ]] || [[ "$rel" == "cgi-bin/lastchargeid" ]]; then
+    # Ignorer setup et version (traités séparément)
+    if [[ "$rel" == "cgi-bin/setup" ]] || [[ "$rel" == "cgi-bin/version" ]]; then
         echo "  IGNORÉ : $rel"
         continue
     fi
@@ -123,10 +124,18 @@ if ! php -r "curl_init();" 2>/dev/null || ! grep -q "PrivateTmp=false" "$OVERRID
     echo "Apache redémarré"
 fi
 
-# --- 9. Nettoyage (répertoire temporaire uniquement) ---
+# --- 9. Permissions logo ---
+if [ -f "$WEBROOT/tmmlogo.jpg" ]; then
+    chown www-data:www-data "$WEBROOT/tmmlogo.jpg"
+    chmod 644 "$WEBROOT/tmmlogo.jpg"
+    echo "tmmlogo.jpg : permissions OK"
+else
+    echo "AVERTISSEMENT : tmmlogo.jpg absent de $WEBROOT (absent du zip ?)"
+fi
+
+# --- 10. Nettoyage (répertoire temporaire uniquement) ---
 rm -rf "$TMPDIR"
 echo "Répertoire temporaire supprimé"
 echo "files.zip et installweb.sh conservés dans /tmp"
 
 echo "=== Mise à jour terminée ==="
-

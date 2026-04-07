@@ -84,7 +84,7 @@ KWH_PRICE=${KWH_PRICE:-0.0000}
 echo -e "${GREEN}[1/8] Installation des dépendances système${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
-apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring php-curl \
+apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring \
     postgresql-client unzip zip curl wget logrotate net-tools \
     postfix mailutils libsasl2-2 libsasl2-modules ca-certificates mosquitto-clients
 
@@ -129,6 +129,11 @@ if [ -d "$TEMP_EXTRACT/www" ]; then
     cp -r "$TEMP_EXTRACT/www"/. /var/www/html/
     mkdir -p /var/www/html/cgi-bin
     chown -R www-data:www-data /var/www/html/
+    if [ -f "/var/www/html/tmmlogo.jpg" ]; then
+        echo -e "   ${CYAN}→ tmmlogo.jpg déployé${NC}"
+    else
+        echo -e "   ${YELLOW}⚠ tmmlogo.jpg absent du zip${NC}"
+    fi
     echo -e "   ${CYAN}→ /var/www/html/ déployé${NC}"
 fi
 
@@ -180,21 +185,6 @@ EOF
 
 chown www-data:www-data "$SETUP_FILE"
 chmod 664 "$SETUP_FILE"
-
-# Récupération du sha/size GitHub pour éviter une fausse détection de MAJ
-GH_RAW=$(curl -s --range 0-500 \
-  -H "User-Agent: TeslaMateMailInstaller/1.0" \
-  "https://api.github.com/repos/infrarik/teslamatemail/contents/files.zip")
-GH_SHA=$(echo "$GH_RAW" | grep -o '"sha":"[^"]*"' | head -1 | cut -d'"' -f4)
-GH_SIZE=$(echo "$GH_RAW" | grep -o '"size":[0-9]*' | head -1 | cut -d':' -f2)
-if [ -n "$GH_SHA" ]; then
-    echo "github_sha=$GH_SHA" >> "$SETUP_FILE"
-    echo "github_size=$GH_SIZE" >> "$SETUP_FILE"
-    echo -e "   ${CYAN}→ github_sha/size enregistrés dans setup${NC}"
-else
-    echo -e "   ${YELLOW}⚠ Impossible de récupérer le sha GitHub (pas de réseau ?)${NC}"
-fi
-
 echo -e "   ${CYAN}→ cgi-bin/setup écrit${NC}"
 
 # ============================================================================
