@@ -101,6 +101,7 @@ WWW_FILES=(
     "test_email.php" "test_mqtt.php" "test_telegram.php"
     "notification_charging.php" "logoteslamatemail.png" "logoparrain.png"
     "icon-192.png" "icon-512.png" "manifest.json" "sw.js" "dashcam_logosmall.jpg"
+    "tmmlogo.jpg"
 )
 
 for file in "${WWW_FILES[@]}"; do
@@ -167,6 +168,7 @@ else
 fi
 NEW_VERSION="${DATE_VERSION}.${NEW_INC}"
 echo "$NEW_VERSION" > "$PACKAGE_DIR/www/cgi-bin/version"
+    echo "$NEW_VERSION" > "$VERSION_FILE"
 echo -e "${CYAN}    ✓ Version générée : ${YELLOW}$NEW_VERSION${NC}"
 echo -e "${CYAN}    ✓ Fichiers cgi-bin et sécurité générés${NC}"
 
