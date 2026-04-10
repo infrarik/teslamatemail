@@ -287,6 +287,9 @@ Ce programme est distribué sous licence **GNU GPL v3**.
 3. **Absence de garantie** : distribué tel quel, sans garantie d'aucune sorte
 
 ---
+![fb tesla coding](https://github.com/user-attachments/assets/d2ac36e3-3d8b-4331-a802-1a2fa42c406f)
+
+Vous codez ? Rejoignez le groupe Tesla Coding & Dev Only : https://www.facebook.com/groups/1866372684068780
 
 *TeslaMate Mail — monwifi.fr / Eric B. — 2026*
 
