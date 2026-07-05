@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script de création du package files.zip pour TeslaMate Mail
-# Version 3.7 - Ajout auth.php et auth_check.php dans le package
+# Version 3.8 - Ajout teslabrp.php + logo, exclusion garantie des clés API ABRP
 ################################################################################
 
 set -e
@@ -25,7 +25,7 @@ SRC_WWW="/var/www/html"
 
 clear
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}     Création du package TeslaMate Mail v3.7${NC}"
+echo -e "${BLUE}     Création du package TeslaMate Mail v3.8${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -96,6 +96,7 @@ WWW_FILES=(
     "tesla.php" "teslamate_api.php" "teslaconf.php"
     "teslaconfig_handler.php" "teslanotif.php" "teslamap.php"
     "teslacalcul.php" "tesla_rapport_hebdo.php" "tesla_rapport_hebdo_body.php" "fn_mail_rapport.php"
+    "teslabrp.php" "erouterlogo.png"
     "credits.php" "parrain.php"
     "telegram_helper.php" "telegramtest.php" "test_docker.php"
     "test_email.php" "test_mqtt.php" "test_telegram.php"
@@ -112,6 +113,15 @@ for file in "${WWW_FILES[@]}"; do
     fi
 done
 echo -e "${CYAN}    ✓ Fichiers web copiés${NC}"
+
+# Sécurité : les clés API ORS/Gemini (teslabrp.php) ne doivent JAMAIS
+# être packagées, même par erreur. On les retire explicitement si présentes.
+rm -f "$PACKAGE_DIR/www/ors_key.txt" "$PACKAGE_DIR/www/gemini_key.txt"
+if [ -f "$SRC_WWW/ors_key.txt" ] || [ -f "$SRC_WWW/gemini_key.txt" ]; then
+    echo -e "${YELLOW}    ⚠ Clés ORS/Gemini détectées sur le serveur — volontairement EXCLUES du zip${NC}"
+else
+    echo -e "${CYAN}    ✓ Aucune clé ORS/Gemini à exclure (rien trouvé sur le serveur)${NC}"
+fi
 
 # ============================================================================
 # ÉTAPE 5 : Génération des fichiers cgi-bin & Sécurité
