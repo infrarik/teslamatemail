@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script d'installation COMPLET TeslaMate Mail
-# Version 3.7 - Ajout auth.php et auth_check.php, permissions setup 664
+# Version 3.8 - Ajout des clés API ABRP (ORS & Gemini) pour teslabrp.php
 #
 # Ce script fait TOUT :
 # - Installation des dépendances
@@ -11,6 +11,7 @@
 # - Déploiement intégral (www -> /var/www/html, root -> /root)
 # - Configuration Docker & Nettoyage yaml
 # - Écriture de cgi-bin/setup
+# - Écriture des clés API ABRP (ors_key.txt / gemini_key.txt) pour teslabrp.php
 # - Création du log et installation du cron hebdomadaire
 # - Récapitulatif détaillé de la configuration
 ################################################################################
@@ -31,7 +32,7 @@ ZIP_FILE="$SCRIPT_DIR/files.zip"
 
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Installation TeslaMate Mail v3.7                  ║${NC}"
+echo -e "${BLUE}║     Installation TeslaMate Mail v3.8                  ║${NC}"
 echo -e "${BLUE}║     Copyright © 2026 monserveur.fr / Eric BERTREM     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -78,10 +79,20 @@ read -p "Email destinataire par défaut : " DEFAULT_EMAIL
 read -p "Prix du kWh (ex: 0.2500) [0.0000] : " KWH_PRICE
 KWH_PRICE=${KWH_PRICE:-0.0000}
 
+echo ""
+echo -e "${MAGENTA}╔═══════════════════════════════════════════════════════╗${NC}"
+echo -e "${MAGENTA}║   CONFIGURATION ABRP - ITINÉRAIRE & PÉAGES (facultatif) ║${NC}"
+echo -e "${MAGENTA}╚═══════════════════════════════════════════════════════╝${NC}"
+echo -e "   Ces clés peuvent être laissées vides et saisies plus tard"
+echo -e "   directement depuis la page teslabrp.php."
+echo ""
+read -p "Clé API OpenRouteService (ORS) [vide = à saisir plus tard] : " ORS_API_KEY
+read -p "Clé API Google Gemini [vide = à saisir plus tard] : " GEMINI_API_KEY
+
 # ============================================================================
 # ÉTAPE 1 : Installation des dépendances
 # ============================================================================
-echo -e "${GREEN}[1/8] Installation des dépendances système${NC}"
+echo -e "${GREEN}[1/9] Installation des dépendances système${NC}"
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
 apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring \
@@ -91,7 +102,7 @@ apt install -y apache2 php libapache2-mod-php php-pgsql php-json php-mbstring \
 # ============================================================================
 # ÉTAPE 2 : Configuration de Postfix
 # ============================================================================
-echo -e "${GREEN}[2/8] Configuration de Postfix${NC}"
+echo -e "${GREEN}[2/9] Configuration de Postfix${NC}"
 DOMAIN=$(echo "$SMTP_FROM" | cut -d'@' -f2)
 
 cat > /etc/postfix/main.cf <<EOF
@@ -119,7 +130,7 @@ systemctl restart postfix
 # ============================================================================
 # ÉTAPE 3 : Extraction et déploiement (TOUS LES FICHIERS)
 # ============================================================================
-echo -e "${GREEN}[3/8] Déploiement des fichiers (Archive Intégrale)${NC}"
+echo -e "${GREEN}[3/9] Déploiement des fichiers (Archive Intégrale)${NC}"
 TEMP_EXTRACT="/tmp/teslamate_extract_$$"
 mkdir -p "$TEMP_EXTRACT"
 unzip -q "$ZIP_FILE" -d "$TEMP_EXTRACT"
@@ -149,7 +160,7 @@ rm -rf "$TEMP_EXTRACT"
 # ============================================================================
 # ÉTAPE 4 : Configuration Docker & Nettoyage YAML
 # ============================================================================
-echo -e "${GREEN}[4/8] Configuration Docker${NC}"
+echo -e "${GREEN}[4/9] Configuration Docker${NC}"
 DOCKER_COMPOSE_PATH=""
 for path in "/opt/teslamate/docker-compose.yml" "/home/$USER/teslamate/docker-compose.yml" "./docker-compose.yml"; do
     if [ -f "$path" ]; then DOCKER_COMPOSE_PATH="$path"; break; fi
@@ -165,7 +176,7 @@ fi
 # ============================================================================
 # ÉTAPE 5 : Écriture du fichier setup (cgi-bin/setup)
 # ============================================================================
-echo -e "${GREEN}[5/8] Écriture de la configuration cgi-bin/setup${NC}"
+echo -e "${GREEN}[5/9] Écriture de la configuration cgi-bin/setup${NC}"
 mkdir -p /var/www/html/cgi-bin
 SETUP_FILE="/var/www/html/cgi-bin/setup"
 
@@ -188,9 +199,34 @@ chmod 664 "$SETUP_FILE"
 echo -e "   ${CYAN}→ cgi-bin/setup écrit${NC}"
 
 # ============================================================================
-# ÉTAPE 6 : Création du fichier de log
+# ÉTAPE 6 : Écriture des clés API ABRP (OpenRouteService & Gemini)
 # ============================================================================
-echo -e "${GREEN}[6/8] Création du fichier de log${NC}"
+echo -e "${GREEN}[6/9] Écriture des clés API teslabrp.php (ORS & Gemini)${NC}"
+ORS_KEY_FILE="/var/www/html/ors_key.txt"
+GEMINI_KEY_FILE="/var/www/html/gemini_key.txt"
+
+touch "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+[ -n "$ORS_API_KEY" ]    && printf '%s' "$ORS_API_KEY"    > "$ORS_KEY_FILE"
+[ -n "$GEMINI_API_KEY" ] && printf '%s' "$GEMINI_API_KEY" > "$GEMINI_KEY_FILE"
+
+chown www-data:www-data "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+chmod 664 "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+
+if [ -n "$ORS_API_KEY" ]; then
+    echo -e "   ${CYAN}→ ors_key.txt écrit (clé renseignée)${NC}"
+else
+    echo -e "   ${YELLOW}→ ors_key.txt créé vide (à saisir depuis teslabrp.php)${NC}"
+fi
+if [ -n "$GEMINI_API_KEY" ]; then
+    echo -e "   ${CYAN}→ gemini_key.txt écrit (clé renseignée)${NC}"
+else
+    echo -e "   ${YELLOW}→ gemini_key.txt créé vide (à saisir depuis teslabrp.php)${NC}"
+fi
+
+# ============================================================================
+# ÉTAPE 7 : Création du fichier de log
+# ============================================================================
+echo -e "${GREEN}[7/9] Création du fichier de log${NC}"
 touch /var/log/tesla_rapport.log
 chmod 666 /var/log/tesla_rapport.log
 echo -e "   ${CYAN}Log : /var/log/tesla_rapport.log${NC}"
@@ -212,7 +248,7 @@ echo -e "   ${CYAN}→ Logrotate configuré (hebdo, 12 semaines)${NC}"
 # ============================================================================
 # ÉTAPE 7 : Installation du cron hebdomadaire (fixe, activé via setup)
 # ============================================================================
-echo -e "${GREEN}[7/8] Installation du cron hebdomadaire (lundi 4h)${NC}"
+echo -e "${GREEN}[8/9] Installation du cron hebdomadaire (lundi 4h)${NC}"
 CRON_SCRIPT="/var/www/html/tesla_rapport_hebdo.php"
 CRON_LOG="/var/log/tesla_rapport.log"
 CRON_LINE="0 4 * * 1 php $CRON_SCRIPT >> $CRON_LOG 2>&1"
@@ -228,7 +264,7 @@ fi
 # ============================================================================
 # ÉTAPE 8 : Vérification Apache / PHP
 # ============================================================================
-echo -e "${GREEN}[8/8] Vérification Apache / PHP${NC}"
+echo -e "${GREEN}[9/9] Vérification Apache / PHP${NC}"
 a2enmod php* 2>/dev/null || true
 systemctl enable apache2 2>/dev/null || true
 
@@ -267,6 +303,18 @@ else
 fi
 
 echo ""
+echo -e "${CYAN}🗺️  CONFIGURATION ABRP (teslabrp.php) :${NC}"
+if [ -n "$ORS_API_KEY" ]; then
+    echo -e "   Clé ORS          : ${GREEN}configurée${NC}"
+else
+    echo -e "   Clé ORS          : ${YELLOW}non configurée (à saisir dans teslabrp.php)${NC}"
+fi
+if [ -n "$GEMINI_API_KEY" ]; then
+    echo -e "   Clé Gemini       : ${GREEN}configurée${NC}"
+else
+    echo -e "   Clé Gemini       : ${YELLOW}non configurée (à saisir dans teslabrp.php)${NC}"
+fi
+echo ""
 echo -e "${CYAN}⏰ CRON HEBDOMADAIRE :${NC}"
 echo -e "   ${GREEN}$CRON_LINE${NC}"
 echo -e "   Log    : ${YELLOW}$CRON_LOG${NC}"
@@ -276,4 +324,3 @@ echo -e "${CYAN}🌐 ACCÈS :${NC}"
 IP_ADDR=$(hostname -I | awk '{print $1}')
 echo -e "   URL : ${GREEN}http://$IP_ADDR/tesla.php${NC}"
 echo ""
-
