@@ -80,6 +80,12 @@ find "$TMPDIR" -type f | while read src; do
         echo "  IGNORÉ : $rel"
         continue
     fi
+    # Sécurité : ne JAMAIS écraser les clés API ABRP existantes,
+    # même si elles apparaissaient par erreur dans le zip
+    if [[ "$rel" == "ors_key.txt" ]] || [[ "$rel" == "gemini_key.txt" ]]; then
+        echo "  IGNORÉ (clé API ABRP - jamais écrasée) : $rel"
+        continue
+    fi
     dest="$WEBROOT/$rel"
     mkdir -p "$(dirname "$dest")"
     cp "$src" "$dest"
@@ -133,7 +139,23 @@ else
     echo "AVERTISSEMENT : tmmlogo.jpg absent de $WEBROOT (absent du zip ?)"
 fi
 
-# --- 10. Nettoyage (répertoire temporaire uniquement) ---
+if [ -f "$WEBROOT/erouterlogo.png" ]; then
+    chown www-data:www-data "$WEBROOT/erouterlogo.png"
+    chmod 644 "$WEBROOT/erouterlogo.png"
+    echo "erouterlogo.png : permissions OK"
+else
+    echo "AVERTISSEMENT : erouterlogo.png absent de $WEBROOT (absent du zip ?)"
+fi
+
+# --- 10. Clés API ABRP (ORS & Gemini) : créées si absentes, jamais écrasées ---
+ORS_KEY_FILE="$WEBROOT/ors_key.txt"
+GEMINI_KEY_FILE="$WEBROOT/gemini_key.txt"
+touch "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+chown www-data:www-data "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+chmod 664 "$ORS_KEY_FILE" "$GEMINI_KEY_FILE"
+echo "Clés ABRP (ors_key.txt / gemini_key.txt) : présentes, permissions OK (contenu jamais modifié)"
+
+# --- 11. Nettoyage (répertoire temporaire uniquement) ---
 rm -rf "$TMPDIR"
 echo "Répertoire temporaire supprimé"
 echo "files.zip et installweb.sh conservés dans /tmp"
